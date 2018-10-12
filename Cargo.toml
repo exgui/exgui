@@ -1,0 +1,6 @@
+[package]
+name = "exgui"
+version = "0.1.0"
+authors = ["XX <freecoder.xx@gmail.com>"]
+
+[dependencies]
