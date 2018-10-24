@@ -13,6 +13,77 @@ pub enum Node<MC: ModelComponent> {
 //    List(List),
 }
 
+#[derive(Default, Clone)]
+pub struct NodeDefaults {
+    fill: Option<Fill>,
+    stroke: Option<Stroke>,
+    translate: Option<Translate>,
+}
+
+impl<MC: ModelComponent> Node<MC> {
+    pub fn resolve(&mut self, defaults: Option<&NodeDefaults>) {
+        match self {
+            Node::Unit(ref mut unit) => {
+                match unit.shape {
+                    Shape::Rect(ref mut r) => {
+                        if let Some(defaults) = defaults {
+                            if defaults.fill.is_some() && r.fill.is_none() {
+                                r.fill = defaults.fill;
+                            }
+                            if defaults.stroke.is_some() && r.stroke.is_none() {
+                                r.stroke = defaults.stroke;
+                            }
+                            if defaults.translate.is_some() {
+                                r.x += defaults.translate.unwrap().x;
+                                r.y += defaults.translate.unwrap().y;
+                            }
+                        }
+                    },
+                    Shape::Circle(ref mut c) => {
+                        if let Some(defaults) = defaults {
+                            if defaults.fill.is_some() && c.fill.is_none() {
+                                c.fill = defaults.fill;
+                            }
+                            if defaults.stroke.is_some() && c.stroke.is_none() {
+                                c.stroke = defaults.stroke;
+                            }
+                            if defaults.translate.is_some() {
+                                c.cx += defaults.translate.unwrap().x;
+                                c.cy += defaults.translate.unwrap().y;
+                            }
+                        }
+                    },
+                    Shape::Group(ref g) => {
+                        if !g.empty_overrides() {
+                            let mut defaults = defaults
+                                .map(|d| d.clone())
+                                .unwrap_or(NodeDefaults::default());
+
+                            if g.fill.is_some() {
+                                defaults.fill = g.fill;
+                            }
+                            if g.stroke.is_some() {
+                                defaults.stroke = g.stroke;
+                            }
+                            if g.translate.is_some() {
+                                defaults.translate = g.translate;
+                            }
+
+                            for child in unit.childs.iter_mut() {
+                                child.resolve(Some(&defaults));
+                            }
+                            return;
+                        }
+                    },
+                }
+                for child in unit.childs.iter_mut() {
+                    child.resolve(defaults);
+                }
+            }
+        }
+    }
+}
+
 impl<MC: ModelComponent> From<Unit<MC>> for Node<MC> {
     fn from(unit: Unit<MC>) -> Self {
         Node::Unit(unit)

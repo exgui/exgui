@@ -102,7 +102,17 @@ pub struct Circle {
 }
 
 #[derive(Debug, Default)]
-pub struct Group {}
+pub struct Group {
+    pub stroke: Option<Stroke>,
+    pub fill: Option<Fill>,
+    pub translate: Option<Translate>,
+}
+
+impl Group {
+    pub fn empty_overrides(&self) -> bool {
+        self.stroke.is_none() && self.fill.is_none() && self.translate.is_none()
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub enum Color {
@@ -193,5 +203,17 @@ impl From<(Color, f32)> for Fill {
             color,
             transparent,
         }
+    }
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Translate {
+    pub x: f32,
+    pub y: f32,
+}
+
+impl From<(f32, f32)> for Translate {
+    fn from((x, y): (f32, f32)) -> Self {
+        Translate { x, y }
     }
 }
