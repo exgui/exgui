@@ -1,3 +1,7 @@
+pub mod egml;
+
+pub use egml::*;
+
 #[cfg(test)]
 mod tests {
     #[test]
