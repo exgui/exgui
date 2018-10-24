@@ -137,13 +137,61 @@ impl Default for Color {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Stroke {
-    pub width: f32,
     pub color: Color,
     pub transparent: f32,
+    pub width: f32,
+}
+
+impl From<Color> for Stroke {
+    fn from(color: Color) -> Self {
+        Stroke {
+            color,
+            width: 1.0,
+            transparent: 0.0,
+        }
+    }
+}
+
+impl From<(Color, f32)> for Stroke {
+    fn from((color, width): (Color, f32)) -> Self {
+        Stroke {
+            color,
+            width,
+            transparent: 0.0,
+        }
+    }
+}
+
+impl From<(Color, f32, f32)> for Stroke {
+    fn from((color, width, transparent): (Color, f32, f32)) -> Self {
+        Stroke {
+            color,
+            width,
+            transparent,
+        }
+    }
 }
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Fill {
     pub color: Color,
     pub transparent: f32,
+}
+
+impl From<Color> for Fill {
+    fn from(color: Color) -> Self {
+        Fill {
+            color,
+            transparent: 0.0,
+        }
+    }
+}
+
+impl From<(Color, f32)> for Fill {
+    fn from((color, transparent): (Color, f32)) -> Self {
+        Fill {
+            color,
+            transparent,
+        }
+    }
 }
