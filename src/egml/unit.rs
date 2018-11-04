@@ -41,6 +41,14 @@ impl<MC: ModelComponent> Unit<MC> {
     pub fn add_listener(&mut self, listener: Box<dyn Listener<MC>>) {
         self.listeners.push(listener);
     }
+
+    pub fn intersect(&self, x: f32, y: f32) -> bool {
+        match &self.shape {
+            Shape::Rect(ref r) => x >= r.x && x <= r.width && y >= r.y && y <= r.height,
+            Shape::Circle(ref c) => ((x - c.cx).powi(2) + (y - c.cy).powi(2)).sqrt() <= c.r,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Default)]

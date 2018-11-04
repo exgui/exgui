@@ -148,11 +148,13 @@ impl<MC: ModelComponent> fmt::Debug for dyn Listener<MC> {
 }
 
 pub mod event {
+    #[derive(Clone, Copy, Eq, PartialEq)]
     pub enum Event {
         Click(ClickEvent),
         DoubleClick,
     }
 
+    #[derive(Clone, Copy, Eq, PartialEq)]
     pub struct ClickEvent;
 
     pub mod listener {

@@ -81,7 +81,7 @@ macro_rules! egml_impl {
 //    };
     // Events:
     (@unit $stack:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-        egml_impl! { @unit $stack $shape ((onclick) = move | $var: $crate::prelude::ClickEvent | $handler, $($tail)*) }
+        egml_impl! { @unit $stack $shape ((onclick) = move | $var: $crate::egml::event::ClickEvent | $handler, $($tail)*) }
     };
 //    (@unit $stack:ident (ondoubleclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
 //        egml_impl! { @unit $stack ((ondoubleclick) = move | $var: $crate::prelude::DoubleClickEvent | $handler, $($tail)*) }

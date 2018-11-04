@@ -1,4 +1,5 @@
 pub mod egml;
+pub mod controller;
 
 pub use egml::*;
 
