@@ -132,6 +132,62 @@ pub trait Viewable<MC: ModelComponent> {
     fn view(&self) -> Node<MC>;
 }
 
+/// `Listener` trait is an universal implementation of an event listener
+/// which helps to bind Node-listener to input controller's output.
+pub trait Listener<MC: ModelComponent> {
+    /// Returns event type.
+    fn kind(&self) -> &'static str;
+
+    fn handle(&self, event: event::Event) -> Option<<MC as ModelComponent>::Message>;
+}
+
+impl<MC: ModelComponent> fmt::Debug for dyn Listener<MC> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Listener {{ kind: {} }}", self.kind())
+    }
+}
+
+pub mod event {
+    pub enum Event {
+        Click(ClickEvent),
+        DoubleClick,
+    }
+
+    pub struct ClickEvent;
+
+    pub mod listener {
+        use super::*;
+        use egml::{Listener, Viewable, ModelComponent};
+
+        pub struct ClickListener<F, MSG>(pub F)
+            where F: Fn(ClickEvent) -> MSG + 'static;
+
+        impl<T, MC> Listener<MC> for ClickListener<T, <MC as ModelComponent>::Message>
+            where
+                T: Fn(ClickEvent) -> <MC as ModelComponent>::Message + 'static,
+                MC: ModelComponent + Viewable<MC>,
+        {
+            fn kind(&self) -> &'static str {
+                stringify!(ClickEvent)
+            }
+
+            fn handle(&self, event: Event) -> Option<<MC as ModelComponent>::Message> {
+                match event {
+                    Event::Click(event) => Some((self.0)(event)),
+                    _ => None,
+                }
+            }
+        }
+
+        pub fn onclick<F, MSG>(handler: F) -> ClickListener<F, MSG>
+            where
+                MSG: 'static,
+                F: Fn(ClickEvent) -> MSG + 'static,
+        {
+            ClickListener(handler)
+        }
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -156,7 +212,7 @@ mod tests {
             );
             let mut group = Unit::new(
                 "group",
-                Shape::Group(Group {})
+                Shape::Group(Group::default())
             );
             let circle = Unit::new(
                 "circle",

@@ -1,7 +1,7 @@
 //! This module contains macros which implements `egml!` macro
 //! and JSX-like templates.
 
-use egml::{ModelComponent, Node, Rect, Circle, Group};
+use egml::{ModelComponent, Node, Rect, Circle, Group, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -79,10 +79,10 @@ macro_rules! egml_impl {
 //        }
 //        egml_impl! { @unit $stack ($($tail)*) }
 //    };
-//    // Events:
-//    (@unit $stack:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $stack ((onclick) = move | $var: $crate::prelude::ClickEvent | $handler, $($tail)*) }
-//    };
+    // Events:
+    (@unit $stack:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+        egml_impl! { @unit $stack $shape ((onclick) = move | $var: $crate::prelude::ClickEvent | $handler, $($tail)*) }
+    };
 //    (@unit $stack:ident (ondoubleclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
 //        egml_impl! { @unit $stack ((ondoubleclick) = move | $var: $crate::prelude::DoubleClickEvent | $handler, $($tail)*) }
 //    };
@@ -161,15 +161,15 @@ macro_rules! egml_impl {
 //    (@unit $stack:ident (ondrop = | $var:pat | $handler:expr, $($tail:tt)*)) => {
 //        egml_impl! { @unit $stack ((ondrop) = move | $var: $crate::prelude::DragDropEvent | $handler, $($tail)*) }
 //    };
-//
-//    // PATTERN: (action)=expression,
-//    (@unit $stack:ident (($action:ident) = $handler:expr, $($tail:tt)*)) => {
-//        // Catch value to a separate variable for clear error messages
-//        let handler = $handler;
-//        let listener = $crate::html::$action::Wrapper::from(handler);
-//        $crate::macros::attach_listener(&mut $stack, Box::new(listener));
-//        egml_impl! { @unit $stack ($($tail)*) }
-//    };
+
+    // PATTERN: (action)=expression,
+    (@unit $stack:ident $shape:ident (($action:ident) = $handler:expr, $($tail:tt)*)) => {
+        // Catch value to a separate variable for clear error messages
+        let handler = $handler;
+        let listener = $crate::egml::event::listener::$action(handler);
+        $crate::egml::macros::attach_listener(&mut $stack, Box::new(listener));
+        egml_impl! { @unit $stack $shape ($($tail)*) }
+    };
 //    // Attributes:
 //    (@unit $stack:ident (href = $href:expr, $($tail:tt)*)) => {
 //        let href: $crate::html::Href = $href.into();
@@ -344,18 +344,15 @@ pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {
 //        panic!("no tag to set classes: {}", classes.as_ref());
 //    }
 //}
-//
-//#[doc(hidden)]
-//pub fn attach_listener<COMP: Component>(
-//    stack: &mut Stack<COMP>,
-//    listener: Box<dyn Listener<COMP>>,
-//) {
-//    if let Some(&mut VNode::VTag(ref mut vtag)) = stack.last_mut() {
-//        vtag.add_listener(listener);
-//    } else {
-//        panic!("no tag to attach listener: {:?}", listener);
-//    }
-//}
+
+#[doc(hidden)]
+pub fn attach_listener<MC: ModelComponent>(stack: &mut Stack<MC>, listener: Box<dyn Listener<MC>>) {
+    if let Some(&mut Node::Unit(ref mut unit)) = stack.last_mut() {
+        unit.add_listener(listener);
+    } else {
+        panic!("no unit to attach listener: {:?}", listener);
+    }
+}
 
 #[doc(hidden)]
 pub fn add_child<MC: ModelComponent>(stack: &mut Stack<MC>, child: Node<MC>) {

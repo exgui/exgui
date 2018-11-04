@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 use std::marker::PhantomData;
-use egml::{ModelComponent, Node, Shape};
+use egml::{ModelComponent, Node, Shape, Listener};
 
 #[derive(Debug)]
 pub struct Unit<MC: ModelComponent> {
@@ -9,6 +9,7 @@ pub struct Unit<MC: ModelComponent> {
     pub value: Option<String>,
     pub attrs: Attrs,
     pub childs: Vec<Node<MC>>,
+    pub listeners: Vec<Box<dyn Listener<MC>>>,
     _phantom: PhantomData<MC>,
 }
 
@@ -20,6 +21,7 @@ impl<MC: ModelComponent> Unit<MC> {
             value: None,
             attrs: Attrs {},
             childs: Vec::new(),
+            listeners: Vec::new(),
             _phantom: PhantomData,
         }
     }
@@ -32,6 +34,12 @@ impl<MC: ModelComponent> Unit<MC> {
     /// Add `Node` child.
     pub fn add_child(&mut self, child: Node<MC>) {
         self.childs.push(child);
+    }
+
+    /// Adds new listener to the node.
+    /// It's boxed because we want to keep it in a single list.
+    pub fn add_listener(&mut self, listener: Box<dyn Listener<MC>>) {
+        self.listeners.push(listener);
     }
 }
 
