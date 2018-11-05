@@ -101,7 +101,7 @@ impl<MC: ModelComponent> fmt::Debug for Node<MC> {
     }
 }
 
-pub type ShouldRender = bool;
+pub type ShouldChangeView = bool;
 
 /// An interface of a UI-component. Uses `self` as a model.
 pub trait ModelComponent: Sized + 'static {
@@ -117,9 +117,9 @@ pub trait ModelComponent: Sized + 'static {
     //fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self;
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
-    fn update(&mut self, msg: Self::Message) -> ShouldRender;
+    fn update(&mut self, msg: Self::Message) -> ShouldChangeView;
     /// This method called when properties changes, and once when component created.
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
+    fn change(&mut self, _: Self::Properties) -> ShouldChangeView {
         unimplemented!("you should implement `change` method for a component with properties")
     }
     /// Called for finalization on the final point of the component's lifetime.

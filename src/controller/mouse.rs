@@ -1,4 +1,4 @@
-use egml::{ModelComponent, Node, ShouldRender, event::{Event, ClickEvent}};
+use egml::{ModelComponent, Node, ShouldChangeView, event::{Event, ClickEvent}};
 
 pub struct MouseInput {
     last_mouse_pos: Option<(f64, f64)>,
@@ -26,7 +26,7 @@ impl MouseInput {
         self.last_offset = Some((x_offset, y_offset));
     }
 
-    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &Node<MC>) -> ShouldRender {
+    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &Node<MC>) -> ShouldChangeView {
         let (x, y) = if let Some((x, y)) = self.last_mouse_pos {
             (x as f32, y as f32)
         } else {
@@ -35,7 +35,7 @@ impl MouseInput {
         Self::intersect_event(x, y, Event::Click(ClickEvent), model, node)
     }
 
-    fn intersect_event<MC: ModelComponent>(x: f32, y: f32, event: Event, model: &mut MC, node: &Node<MC>) -> ShouldRender {
+    fn intersect_event<MC: ModelComponent>(x: f32, y: f32, event: Event, model: &mut MC, node: &Node<MC>) -> ShouldChangeView {
         let mut should_render = false;
         match node {
             Node::Unit(ref unit) => {
