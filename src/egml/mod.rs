@@ -1,15 +1,19 @@
 pub mod macros;
 pub mod unit;
+pub mod comp;
 pub mod shape;
 
 pub use self::unit::*;
+pub use self::comp::*;
 pub use self::shape::*;
 
 use std::fmt::{self, Pointer};
+use std::rc::Rc;
+use controller::InputEvent;
 
 pub enum Node<MC: ModelComponent> {
     Unit(Unit<MC>),
-//    Comp(Comp),
+    Comp(Comp),
 //    List(List),
 }
 
@@ -21,65 +25,47 @@ pub struct NodeDefaults {
 }
 
 impl<MC: ModelComponent> Node<MC> {
-    pub fn resolve(&mut self, defaults: Option<&NodeDefaults>) {
+    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ShouldChangeView {
+        match self {
+            Node::Unit(ref mut unit) => unit.input(event, model),
+            Node::Comp(ref mut comp) => comp.input(event),
+        }
+    }
+}
+
+pub type ChildrenProcessed = bool;
+
+impl<MC: ModelComponent + Viewable<MC>> Node<MC> {
+    pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self {
             Node::Unit(ref mut unit) => {
-                match unit.shape {
-                    Shape::Rect(ref mut r) => {
-                        if let Some(defaults) = defaults {
-                            if defaults.fill.is_some() && r.fill.is_none() {
-                                r.fill = defaults.fill;
-                            }
-                            if defaults.stroke.is_some() && r.stroke.is_none() {
-                                r.stroke = defaults.stroke;
-                            }
-                            if defaults.translate.is_some() {
-                                r.x += defaults.translate.unwrap().x;
-                                r.y += defaults.translate.unwrap().y;
-                            }
-                        }
-                    },
-                    Shape::Circle(ref mut c) => {
-                        if let Some(defaults) = defaults {
-                            if defaults.fill.is_some() && c.fill.is_none() {
-                                c.fill = defaults.fill;
-                            }
-                            if defaults.stroke.is_some() && c.stroke.is_none() {
-                                c.stroke = defaults.stroke;
-                            }
-                            if defaults.translate.is_some() {
-                                c.cx += defaults.translate.unwrap().x;
-                                c.cy += defaults.translate.unwrap().y;
-                            }
-                        }
-                    },
-                    Shape::Group(ref g) => {
-                        if !g.empty_overrides() {
-                            let mut defaults = defaults
-                                .map(|d| d.clone())
-                                .unwrap_or(NodeDefaults::default());
-
-                            if g.fill.is_some() {
-                                defaults.fill = g.fill;
-                            }
-                            if g.stroke.is_some() {
-                                defaults.stroke = g.stroke;
-                            }
-                            if g.translate.is_some() {
-                                defaults.translate = g.translate;
-                            }
-
-                            for child in unit.childs.iter_mut() {
-                                child.resolve(Some(&defaults));
-                            }
-                            return;
-                        }
-                    },
+                if !unit.resolve(defaults.as_ref().map(|d| Rc::clone(d))) {
+                    for child in unit.childs.iter_mut() {
+                        child.resolve(defaults.as_ref().map(|d| Rc::clone(d)));
+                    }
                 }
-                for child in unit.childs.iter_mut() {
-                    child.resolve(defaults);
-                }
+                true
             }
+            Node::Comp(ref mut comp) => {
+                comp.resolve(defaults);
+                false
+            }
+        }
+    }
+}
+
+impl<MC: ModelComponent> Drawable for Node<MC> {
+    fn shape(&self) -> Option<&Shape> {
+        match self {
+            Node::Unit(ref unit) => unit.shape(),
+            Node::Comp(ref comp) => comp.shape(),
+        }
+    }
+
+    fn childs(&self) -> Option<DrawableChilds> {
+        match self {
+            Node::Unit(ref unit) => Drawable::childs(unit),
+            Node::Comp(ref comp) => Drawable::childs(comp),
         }
     }
 }
@@ -90,11 +76,17 @@ impl<MC: ModelComponent> From<Unit<MC>> for Node<MC> {
     }
 }
 
+impl<MC: ModelComponent> From<Comp> for Node<MC> {
+    fn from(comp: Comp) -> Self {
+        Node::Comp(comp)
+    }
+}
+
 impl<MC: ModelComponent> fmt::Debug for Node<MC> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Node::Unit(ref unit) => unit.fmt(f),
-//            Node::Comp(_) => "Component<>".fmt(f),
+            Node::Comp(ref _comp) => "Component<>".fmt(f),
 //            Node::List(_) => "List<>".fmt(f),
 //            Node::Text(ref text) => text.fmt(f),
         }
@@ -107,6 +99,7 @@ pub type ShouldChangeView = bool;
 pub trait ModelComponent: Sized + 'static {
     /// Control message type which `update` loop get.
     type Message: 'static;
+
     /// Properties type of component implementation.
     /// It sould be serializable because it's sent to dynamicaly created
     /// component (layed under `Comp`) and must be restored for a component
@@ -114,14 +107,17 @@ pub trait ModelComponent: Sized + 'static {
     type Properties: Clone + PartialEq + Default;
 
     /// Initialization routine which could use a context.
-    //fn create(props: Self::Properties, link: ComponentLink<Self>) -> Self;
+    fn create(props: &Self::Properties/*, link: ComponentLink<Self>*/) -> Self;
+
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
     fn update(&mut self, msg: Self::Message) -> ShouldChangeView;
+
     /// This method called when properties changes, and once when component created.
     fn change(&mut self, _: Self::Properties) -> ShouldChangeView {
         unimplemented!("you should implement `change` method for a component with properties")
     }
+
     /// Called for finalization on the final point of the component's lifetime.
     fn destroy(&mut self) { } // TODO Replace with `Drop`
 }
@@ -130,6 +126,27 @@ pub trait ModelComponent: Sized + 'static {
 pub trait Viewable<MC: ModelComponent> {
     /// Called by rendering loop.
     fn view(&self) -> Node<MC>;
+}
+
+pub type DrawableChilds<'a> = Box<dyn Iterator<Item=&'a dyn Drawable> + 'a>;
+
+pub trait Drawable {
+    /// Called by rendering loop.
+    fn shape(&self) -> Option<&Shape>;
+
+    fn childs(&self) -> Option<DrawableChilds>;
+
+    fn intersect(&self, x: f32, y: f32) -> bool {
+        if let Some(shape) = self.shape() {
+            match shape {
+                Shape::Rect(ref r) => x >= r.x && x <= r.width && y >= r.y && y <= r.height,
+                Shape::Circle(ref c) => ((x - c.cx).powi(2) + (y - c.cy).powi(2)).sqrt() <= c.r,
+                _ => false,
+            }
+        } else {
+            false
+        }
+    }
 }
 
 /// `Listener` trait is an universal implementation of an event listener
@@ -201,6 +218,10 @@ mod tests {
         type Message = ();
         type Properties = ();
 
+        fn create(_props: &<Self as ModelComponent>::Properties) -> Self {
+            Model
+        }
+
         fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> bool {
             unimplemented!()
         }
@@ -260,12 +281,15 @@ mod tests {
                                             _ => (),
                                         }
                                     }
+                                    _ => (),
                                 }
                             }
-                        }
+                        },
+                        _ => (),
                     }
                 }
-            }
+            },
+            _ => (),
         }
     }
 }

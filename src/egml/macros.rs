@@ -14,35 +14,36 @@ macro_rules! egml_impl {
 //        $crate::macros::child_to_parent(&mut $stack, None);
 //        egml_impl! { $stack ($($tail)*) }
 //    };
-/*    // Start of component tag
+
+    // Start of component tag
     ($stack:ident (< $comp:ty : $($tail:tt)*)) => {
         #[allow(unused_mut)]
-        let mut pair = $crate::virtual_dom::VComp::lazy::<$comp>();
-        egml_impl! { @vcomp $stack pair ($($tail)*) }
+        let mut pair = $crate::egml::Comp::lazy::<$comp>();
+        egml_impl! { @comp $stack $comp, pair ($($tail)*) }
     };
     // Set a whole struct as a properties
-    (@vcomp $stack:ident $pair:ident (with $props:ident, $($tail:tt)*)) => {
+    (@comp $stack:ident $comp:ty, $pair:ident (with $props:ident, $($tail:tt)*)) => {
         $pair.0 = $props;
-        egml_impl! { @vcomp $stack $pair ($($tail)*) }
+        egml_impl! { @comp $stack $comp, $pair ($($tail)*) }
     };
     // Set a specific field as a property.
     // It uses `Transformer` trait to convert a type used in template to a type of the field.
-    (@vcomp $stack:ident $pair:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
+    (@comp $stack:ident $comp:ty, $pair:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
         // It cloned for ergonomics in templates. Attribute with
         // `self.param` value could be reused and sholdn't be cloned
         // by yourself
-        ($pair.0).$attr = $crate::virtual_dom::vcomp::Transformer::transform(&mut $pair.1, $val);
-        egml_impl! { @vcomp $stack $pair ($($tail)*) }
+        ($pair.0).$attr = $crate::egml::comp::Transformer::transform(&mut $pair.1, $val);
+        egml_impl! { @comp $stack $comp, $pair ($($tail)*) }
     };
     // Self-closing of tag
-    (@vcomp $stack:ident $pair:ident (/ > $($tail:tt)*)) => {
+    (@comp $stack:ident $comp:ty, $pair:ident (/ > $($tail:tt)*)) => {
         let (props, mut comp) = $pair;
-        comp.set_props(props);
+        comp.init::<$comp>(props);
         $stack.push(comp.into());
-        $crate::macros::child_to_parent(&mut $stack, None);
+        $crate::egml::macros::child_to_parent(&mut $stack, None);
         egml_impl! { $stack ($($tail)*) }
     };
-*/
+
     // Start of opening unit tag
     ($stack:ident (< $starttag:ident $($tail:tt)*)) => {
         let unit = $crate::egml::Unit::new(stringify!($starttag), $crate::egml::macros::$starttag().into());
@@ -197,7 +198,7 @@ macro_rules! egml_impl {
     // Traditional tag closing
     ($stack:ident (< / $endtag:ident > $($tail:tt)*)) => {
         let endtag = stringify!($endtag);
-        $crate::macros::child_to_parent(&mut $stack, Some(endtag));
+        $crate::egml::macros::child_to_parent(&mut $stack, Some(endtag));
         egml_impl! { $stack ($($tail)*) }
     };
 //    // PATTERN: { for expression }
@@ -227,7 +228,7 @@ macro_rules! egml_impl {
 //    };
     // "End of paring" rule
     ($stack:ident ()) => {
-        $crate::macros::unpack($stack)
+        $crate::egml::macros::unpack($stack)
     };
     ($stack:ident $($tail:tt)*) => {
         compile_error!("You should use curly bracets for text nodes: <a>{ \"Link\" }</a>");
@@ -415,6 +416,10 @@ mod tests {
         fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> bool {
             unimplemented!()
         }
+
+        fn create(_props: &<Self as ModelComponent>::Properties) -> Self {
+            Model
+        }
     }
 
     #[test]
@@ -429,7 +434,8 @@ mod tests {
             Node::Unit(ref unit) => {
                 let x = unit.shape.as_ref().rect().unwrap().x;
                 assert_eq!(1.2, x);
-            }
+            },
+            _ => (),
         }
 
         let circle = ::egml::macros::circle();
@@ -440,7 +446,8 @@ mod tests {
             Node::Unit(ref unit) => {
                 let r = unit.shape.as_ref().circle().unwrap().r;
                 assert_eq!(2.5, r);
-            }
+            },
+            _ => (),
         }
     }
 }
