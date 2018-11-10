@@ -2,7 +2,8 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use egml::{
     ModelComponent, ShouldChangeView, Viewable, Drawable, DrawableChilds,
-    Node, NodeDefaults, Shape, Listener, ChildrenProcessed, event::{Event, ClickEvent}
+    Node, NodeDefaults, Shape, PathCommand, Listener, ChildrenProcessed,
+    event::{Event, ClickEvent}
 };
 use controller::{InputEvent, MousePos};
 
@@ -101,6 +102,32 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
                     if defaults.translate.is_some() {
                         c.cx += defaults.translate.unwrap().x;
                         c.cy += defaults.translate.unwrap().y;
+                    }
+                }
+            },
+            Shape::Path(ref mut p) => {
+                if let Some(defaults) = defaults {
+                    if defaults.fill.is_some() && p.fill.is_none() {
+                        p.fill = defaults.fill;
+                    }
+                    if defaults.stroke.is_some() && p.stroke.is_none() {
+                        p.stroke = defaults.stroke;
+                    }
+                    if defaults.translate.is_some() {
+                        let tx = defaults.translate.unwrap().x;
+                        let ty = defaults.translate.unwrap().y;
+                        for cmd in p.cmd.iter_mut() {
+                            match cmd {
+                                PathCommand::Move(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
+                                PathCommand::Line(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
+                                PathCommand::LineAlonX(ref mut x) => *x += tx,
+                                PathCommand::LineAlonY(ref mut y) => *y += ty,
+                                PathCommand::BezCtrl(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
+                                PathCommand::QuadBezTo(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
+                                PathCommand::CubBezTo(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
+                                _ => (),
+                            }
+                        }
                     }
                 }
             },

@@ -1,7 +1,7 @@
 //! This module contains macros which implements `egml!` macro
 //! and JSX-like templates.
 
-use egml::{ModelComponent, Node, Rect, Circle, Group, Listener};
+use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -270,6 +270,10 @@ pub fn rect() -> Rect {
 
 pub fn circle() -> Circle {
     Circle::default()
+}
+
+pub fn path() -> Path {
+    Path::default()
 }
 
 pub fn group() -> Group {

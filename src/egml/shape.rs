@@ -2,6 +2,7 @@
 pub enum Shape {
     Rect(Rect),
     Circle(Circle),
+    Path(Path),
     Group(Group),
 }
 
@@ -33,6 +34,13 @@ impl<'a> ShapeRef<'a> {
         }
     }
 
+    pub fn path(&self) -> Option<&Path> {
+        match self.0 {
+            Shape::Path(ref path) => Some(path),
+            _ => None,
+        }
+    }
+
     pub fn group(&self) -> Option<&Group> {
         match self.0 {
             Shape::Group(ref group) => Some(group),
@@ -52,6 +60,13 @@ impl<'a> ShapeRefMut<'a> {
     pub fn circle(&mut self) -> Option<&mut Circle> {
         match self.0 {
             Shape::Circle(ref mut circle) => Some(circle),
+            _ => None,
+        }
+    }
+
+    pub fn path(&mut self) -> Option<&mut Path> {
+        match self.0 {
+            Shape::Path(ref mut path) => Some(path),
             _ => None,
         }
     }
@@ -76,6 +91,12 @@ impl From<Circle> for Shape {
     }
 }
 
+impl From<Path> for Shape {
+    fn from(path: Path) -> Self {
+        Shape::Path(path)
+    }
+}
+
 impl From<Group> for Shape {
     fn from(group: Group) -> Self {
         Shape::Group(group)
@@ -92,6 +113,13 @@ pub struct Rect {
     pub fill: Option<Fill>,
 }
 
+impl Rect {
+    #[inline]
+    pub fn intersect(&self, x: f32, y: f32) -> bool {
+        x >= self.x && x <= self.width && y >= self.y && y <= self.height
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Circle {
     pub cx: f32,
@@ -99,6 +127,46 @@ pub struct Circle {
     pub r: f32,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+}
+
+impl Circle {
+    #[inline]
+    pub fn intersect(&self, x: f32, y: f32) -> bool {
+        ((x - self.cx).powi(2) + (y - self.cy).powi(2)).sqrt() <= self.r
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct Path {
+    pub cmd: Vec<PathCommand>,
+    pub stroke: Option<Stroke>,
+    pub fill: Option<Fill>,
+}
+
+impl Path {
+    pub fn intersect(&self, _x: f32, _y: f32) -> bool {
+        false // TODO: need impl
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum PathCommand {
+    Move([f32; 2]),
+    MoveRel([f32; 2]),
+    Line([f32; 2]),
+    LineRel([f32; 2]),
+    LineAlonX(f32),
+    LineAlonXRel(f32),
+    LineAlonY(f32),
+    LineAlonYRel(f32),
+    Close,
+    BezCtrl([f32; 2]),
+    BezCtrlRel([f32; 2]),
+    BezReflectCtrl,
+    QuadBezTo([f32; 2]),
+    QuadBezToRel([f32; 2]),
+    CubBezTo([f32; 2]),
+    CubBezToRel([f32; 2]),
 }
 
 #[derive(Debug, Default)]
@@ -145,19 +213,34 @@ impl Default for Color {
     }
 }
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub struct Stroke {
     pub color: Color,
     pub transparent: f32,
     pub width: f32,
+    pub line_cap: LineCap,
+    pub line_join: LineJoin,
+    pub miter_limit: f32,
+}
+
+impl Default for Stroke {
+    fn default() -> Self {
+        Self {
+            color: Default::default(),
+            transparent: 0.0,
+            width: 1.0,
+            line_cap: LineCap::Butt,
+            line_join: LineJoin::Miter,
+            miter_limit: 10.0,
+        }
+    }
 }
 
 impl From<Color> for Stroke {
     fn from(color: Color) -> Self {
         Stroke {
             color,
-            width: 1.0,
-            transparent: 0.0,
+            ..Default::default()
         }
     }
 }
@@ -167,7 +250,7 @@ impl From<(Color, f32)> for Stroke {
         Stroke {
             color,
             width,
-            transparent: 0.0,
+            ..Default::default()
         }
     }
 }
@@ -178,8 +261,25 @@ impl From<(Color, f32, f32)> for Stroke {
             color,
             width,
             transparent,
+            ..Default::default()
         }
     }
+}
+
+/// Controls how the end of line is drawn.
+#[derive(Clone, Copy, Debug)]
+pub enum LineCap {
+    Butt,
+    Round,
+    Square,
+}
+
+/// Controls how lines are joined together.
+#[derive(Debug, Clone, Copy)]
+pub enum LineJoin {
+    Miter,
+    Round,
+    Bevel
 }
 
 #[derive(Debug, Default, Clone, Copy)]

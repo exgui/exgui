@@ -139,8 +139,9 @@ pub trait Drawable {
     fn intersect(&self, x: f32, y: f32) -> bool {
         if let Some(shape) = self.shape() {
             match shape {
-                Shape::Rect(ref r) => x >= r.x && x <= r.width && y >= r.y && y <= r.height,
-                Shape::Circle(ref c) => ((x - c.cx).powi(2) + (y - c.cy).powi(2)).sqrt() <= c.r,
+                Shape::Rect(ref r) => r.intersect(x, y),
+                Shape::Circle(ref c) => c.intersect(x, y),
+                Shape::Path(ref p) => p.intersect(x, y),
                 _ => false,
             }
         } else {
