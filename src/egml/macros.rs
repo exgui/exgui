@@ -220,12 +220,12 @@ macro_rules! egml_impl {
 //        $stack.push(node);
 //        egml_impl! { $stack () }
 //    };
-//    // PATTERN: { expression }
-//    ($stack:ident ({ $eval:expr } $($tail:tt)*)) => {
-//        let node = $crate::virtual_dom::VNode::from($eval);
-//        $crate::macros::add_child(&mut $stack, node);
-//        egml_impl! { $stack ($($tail)*) }
-//    };
+    // PATTERN: { expression }
+    ($stack:ident ({ $eval:expr } $($tail:tt)*)) => {
+        let node = $crate::egml::Node::from($eval);
+        $crate::egml::macros::add_child(&mut $stack, node);
+        egml_impl! { $stack ($($tail)*) }
+    };
     // "End of paring" rule
     ($stack:ident ()) => {
         $crate::egml::macros::unpack($stack)
