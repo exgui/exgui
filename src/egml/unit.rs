@@ -1,3 +1,4 @@
+use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 use egml::{
@@ -7,7 +8,6 @@ use egml::{
 };
 use controller::{InputEvent, MousePos};
 
-#[derive(Debug)]
 pub struct Unit<MC: ModelComponent> {
     pub name: Cow<'static, str>,
     pub shape: Shape,
@@ -71,6 +71,27 @@ impl<MC: ModelComponent> Unit<MC> {
             }
         }
         should_change
+    }
+
+    pub fn modify(&mut self, model: &dyn Any) {
+        match self.shape {
+            Shape::Rect(ref mut r) => {
+                if let Some(modifier) = r.modifier {
+                    (modifier)(r, model);
+                }
+            },
+            Shape::Circle(ref mut c) => {
+                if let Some(modifier) = c.modifier {
+                    (modifier)(c, model);
+                }
+            },
+            Shape::Path(ref mut p) => {
+                if let Some(modifier) = p.modifier {
+                    (modifier)(p, model);
+                }
+            },
+            Shape::Group(_) => {},
+        }
     }
 }
 

@@ -1,4 +1,5 @@
-#[derive(Debug)]
+use std::any::Any;
+
 pub enum Shape {
     Rect(Rect),
     Circle(Circle),
@@ -103,7 +104,7 @@ impl From<Group> for Shape {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Rect {
     pub x: f32,
     pub y: f32,
@@ -111,6 +112,7 @@ pub struct Rect {
     pub height: f32,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub modifier: Option<fn(&mut Rect, &dyn Any)>,
 }
 
 impl Rect {
@@ -120,13 +122,14 @@ impl Rect {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Circle {
     pub cx: f32,
     pub cy: f32,
     pub r: f32,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub modifier: Option<fn(&mut Circle, &dyn Any)>,
 }
 
 impl Circle {
@@ -136,11 +139,12 @@ impl Circle {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Path {
     pub cmd: Vec<PathCommand>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub modifier: Option<fn(&mut Path, &dyn Any)>,
 }
 
 impl Path {

@@ -44,6 +44,7 @@ pub struct Comp {
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub inputer: Option<fn(&mut Comp, InputEvent) -> ShouldChangeView>,
+    pub modifier: Option<fn(&mut Comp)>,
 }
 
 impl Comp {
@@ -75,7 +76,7 @@ impl Comp {
         self.view_node = Some(Box::new(node));
         self.props = Some(Box::new(props));
         self.resolver = Some(|comp: &mut Comp| {
-            let defaults = comp.clone_defaults();
+            let defaults = comp.cloned_defaults();
             comp.view_node_mut::<MYMC>().resolve(defaults)
         });
         self.drawer = Some(|comp: &Comp| {
@@ -85,7 +86,7 @@ impl Comp {
             let mut view_node = mem::replace(&mut comp.view_node, None)
                 .expect("Inputer can't extract node");
             {
-                let defaults = comp.clone_defaults();
+                let defaults = comp.cloned_defaults();
                 let model = comp.model_mut::<MYMC>();
                 let result = (*view_node)
                     .downcast_mut::<Node<MYMC>>().expect("Inputer can't downcast node")
@@ -98,6 +99,12 @@ impl Comp {
             }
             mem::replace(&mut comp.view_node, Some(view_node));
             false
+        });
+        self.modifier = Some(|comp: &mut Comp| {
+            let boxed_model = mem::replace(&mut comp.model, None)
+                .expect("Modifier can't extract model");
+            comp.view_node_mut::<MYMC>().modify(&(*boxed_model));
+            mem::replace(&mut comp.model, Some(boxed_model));
         });
     }
 
@@ -134,8 +141,22 @@ impl Comp {
         }).unwrap_or(false)
     }
 
-    pub fn clone_defaults(&self) -> Option<Rc<NodeDefaults>> {
+    pub fn cloned_defaults(&self) -> Option<Rc<NodeDefaults>> {
         self.defaults.as_ref().map(|d| Rc::clone(d))
+    }
+
+    pub fn send<MC: ModelComponent + Viewable<MC>>(&mut self, msg: MC::Message) {
+        if self.model_mut::<MC>().update(msg) {
+            let mut new_node = self.model::<MC>().view();
+            new_node.resolve(self.cloned_defaults());
+            self.view_node = Some(Box::new(new_node));
+        }
+    }
+
+    pub fn modify(&mut self) {
+        self.modifier.map(|modifier| {
+            modifier(self)
+        });
     }
 }
 

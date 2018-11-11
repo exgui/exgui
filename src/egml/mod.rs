@@ -7,6 +7,7 @@ pub use self::unit::*;
 pub use self::comp::*;
 pub use self::shape::*;
 
+use std::any::Any;
 use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use controller::InputEvent;
@@ -49,6 +50,20 @@ impl<MC: ModelComponent + Viewable<MC>> Node<MC> {
             Node::Comp(ref mut comp) => {
                 comp.resolve(defaults);
                 false
+            }
+        }
+    }
+
+    pub fn modify(&mut self, model: &dyn Any) {
+        match self {
+            Node::Unit(ref mut unit) => {
+                unit.modify(model);
+                for child in unit.childs.iter_mut() {
+                    child.modify(model);
+                }
+            }
+            Node::Comp(ref mut comp) => {
+                comp.modify();
             }
         }
     }

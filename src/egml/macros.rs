@@ -1,5 +1,6 @@
 //! This module contains macros which implements `egml!` macro
 //! and JSX-like templates.
+#![allow(non_camel_case_types, dead_code)]
 
 use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Listener};
 
@@ -46,7 +47,7 @@ macro_rules! egml_impl {
 
     // Start of opening unit tag
     ($stack:ident (< $starttag:ident $($tail:tt)*)) => {
-        let unit = $crate::egml::Unit::new(stringify!($starttag), $crate::egml::macros::$starttag().into());
+        let unit = $crate::egml::Unit::new(stringify!($starttag), $crate::egml::macros::$starttag::default().into());
         $stack.push(unit.into());
         egml_impl! { @unit $stack $starttag ($($tail)*) }
     };
@@ -80,6 +81,14 @@ macro_rules! egml_impl {
 //        }
 //        egml_impl! { @unit $stack ($($tail)*) }
 //    };
+    (@unit $stack:ident $shape:ident (modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
+        set_attr!($stack, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn std::any::Any| {
+            let $model = $model.downcast_ref::<$cm>()
+                .expect(concat!("Modifier of ", stringify!($shape), " can't downcast model to ", stringify!($cm)));
+            $handler
+        }));
+        egml_impl! { @unit $stack $shape ($($tail)*) }
+    };
     // Events:
     (@unit $stack:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
         egml_impl! { @unit $stack $shape ((onclick) = move | $var: $crate::egml::event::ClickEvent | $handler, $($tail)*) }
@@ -264,21 +273,10 @@ macro_rules! set_attr {
 
 type Stack<MC> = Vec<Node<MC>>;
 
-pub fn rect() -> Rect {
-    Rect::default()
-}
-
-pub fn circle() -> Circle {
-    Circle::default()
-}
-
-pub fn path() -> Path {
-    Path::default()
-}
-
-pub fn group() -> Group {
-    Group::default()
-}
+pub type rect = Rect;
+pub type circle = Circle;
+pub type path = Path;
+pub type group = Group;
 
 #[doc(hidden)]
 pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {
@@ -410,8 +408,11 @@ pub fn child_to_parent<MC: ModelComponent>(stack: &mut Stack<MC>, endtag: Option
 #[cfg(test)]
 mod tests {
     use super::*;
+    use ::egml::Color;
 
-    struct Model;
+    struct Model {
+        val: f32,
+    }
 
     impl ModelComponent for Model {
         type Message = ();
@@ -422,7 +423,9 @@ mod tests {
         }
 
         fn create(_props: &<Self as ModelComponent>::Properties) -> Self {
-            Model
+            Model {
+                val: 0.0,
+            }
         }
     }
 
@@ -430,7 +433,7 @@ mod tests {
     fn set_attr() {
         let mut stack = Vec::<Node<Model>>::new();
 
-        let rect = ::egml::macros::rect();
+        let rect = ::egml::macros::rect::default();
         let unit = ::egml::Unit::new("rect", rect.into());
         stack.push(unit.into());
         set_attr!(stack, rect.x = 1.2);
@@ -442,7 +445,7 @@ mod tests {
             _ => (),
         }
 
-        let circle = ::egml::macros::circle();
+        let circle = ::egml::macros::circle::default();
         let unit = ::egml::Unit::new("circle", circle.into());
         stack.push(unit.into());
         set_attr!(stack, circle.r = 2.5);
@@ -453,5 +456,21 @@ mod tests {
             },
             _ => (),
         }
+    }
+
+    #[test]
+    fn set_modifier() {
+        let _node: Node<Model> = egml! {
+            <group translate = Some((50.0, 50.0).into()), >
+                <rect x = 0.0, y = 0.0, width = 300.0, height = 300.0,
+                        fill = None, stroke = Some((Color::Black, 2.0, 0.5).into()), >
+                    <circle cx = 150.0, cy = 150.0, r = 20.0,
+                            fill = Some(Color::Blue.into()),
+                            modifier = |circle, model: Model| {
+                                circle.cy = model.val;
+                            }, />
+                </rect>
+            </group>
+        };
     }
 }
