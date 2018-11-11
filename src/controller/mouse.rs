@@ -1,4 +1,4 @@
-use egml::{ModelComponent, Node, ShouldChangeView};
+use egml::{ModelComponent, Node, Comp, ShouldChangeView};
 use controller::InputEvent;
 
 pub struct MouseInput {
@@ -33,13 +33,21 @@ impl MouseInput {
         self.last_offset = Some((x_offset, y_offset));
     }
 
-    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &mut Node<MC>) -> ShouldChangeView {
-        let pos = if let Some((x, y)) = self.last_mouse_pos {
+    pub fn last_pos(&self) -> MousePos {
+        if let Some((x, y)) = self.last_mouse_pos {
             MousePos { x: x as f32, y: y as f32 }
         } else {
             MousePos { x: 0.0, y: 0.0 }
-        };
+        }
+    }
 
+    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &mut Node<MC>) -> ShouldChangeView {
+        let pos = self.last_pos();
         node.input(InputEvent::MousePress(pos), model)
+    }
+
+    pub fn left_pressed_comp(&self, comp: &mut Comp) -> ShouldChangeView {
+        let pos = self.last_pos();
+        comp.input(InputEvent::MousePress(pos))
     }
 }
