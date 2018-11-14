@@ -2,10 +2,12 @@ pub mod macros;
 pub mod unit;
 pub mod comp;
 pub mod shape;
+pub mod transform;
 
 pub use self::unit::*;
 pub use self::comp::*;
 pub use self::shape::*;
+pub use self::transform::*;
 
 use std::any::Any;
 use std::fmt::{self, Pointer};
@@ -63,7 +65,7 @@ impl<MC: ModelComponent + Viewable<MC>> Node<MC> {
                 }
             }
             Node::Comp(ref mut comp) => {
-                comp.modify();
+                comp.modify(Some(model));
             }
         }
     }

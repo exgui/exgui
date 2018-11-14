@@ -27,6 +27,14 @@ macro_rules! egml_impl {
         $pair.0 = $props;
         egml_impl! { @comp $stack $comp, $pair ($($tail)*) }
     };
+    (@comp $stack:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident : $pcm:ty | $handler:expr, $($tail:tt)*)) => {
+        ($pair.1).modifier = Some(move |$this: &mut $crate::egml::Comp, $model: &dyn std::any::Any| {
+            let $model = $model.downcast_ref::<$pcm>()
+                .expect(concat!("Modifier of ", stringify!($comp), " can't downcast model to ", stringify!($pcm)));
+            $handler
+        });
+        egml_impl! { @comp $stack $comp, $pair ($($tail)*) }
+    };
     // Set a specific field as a property.
     // It uses `Transformer` trait to convert a type used in template to a type of the field.
     (@comp $stack:ident $comp:ty, $pair:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {

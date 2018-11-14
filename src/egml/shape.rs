@@ -1,4 +1,5 @@
 use std::any::Any;
+use egml::transform::Transform;
 
 pub enum Shape {
     Rect(Rect),
@@ -112,12 +113,17 @@ pub struct Rect {
     pub height: f32,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub transform: Option<Transform>,
     pub modifier: Option<fn(&mut Rect, &dyn Any)>,
 }
 
 impl Rect {
     #[inline]
     pub fn intersect(&self, x: f32, y: f32) -> bool {
+        // TODO: check all transform
+        let (x, y) = self.transform.as_ref()
+            .map(|t| (x - t.matrix[4], y - t.matrix[5]))
+            .unwrap_or((x, y));
         x >= self.x && x <= self.width && y >= self.y && y <= self.height
     }
 }
@@ -129,12 +135,17 @@ pub struct Circle {
     pub r: f32,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub transform: Option<Transform>,
     pub modifier: Option<fn(&mut Circle, &dyn Any)>,
 }
 
 impl Circle {
     #[inline]
     pub fn intersect(&self, x: f32, y: f32) -> bool {
+        // TODO: check all transform
+        let (x, y) = self.transform.as_ref()
+            .map(|t| (x - t.matrix[4], y - t.matrix[5]))
+            .unwrap_or((x, y));
         ((x - self.cx).powi(2) + (y - self.cy).powi(2)).sqrt() <= self.r
     }
 }
@@ -144,6 +155,7 @@ pub struct Path {
     pub cmd: Vec<PathCommand>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub transform: Option<Transform>,
     pub modifier: Option<fn(&mut Path, &dyn Any)>,
 }
 

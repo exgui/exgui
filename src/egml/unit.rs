@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use egml::{
     ModelComponent, ShouldChangeView, Viewable, Drawable, DrawableChilds,
-    Node, NodeDefaults, Shape, PathCommand, Listener, ChildrenProcessed,
+    Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
 use controller::{InputEvent, MousePos};
@@ -107,8 +107,15 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
                         r.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        r.x += defaults.translate.unwrap().x;
-                        r.y += defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x;
+                        let ty = defaults.translate.unwrap().y;
+
+                        if r.transform.is_none() {
+                            r.transform = Some(Transform::new());
+                        }
+                        r.transform.as_mut().map(|transform| {
+                            transform.translate_add(tx, ty);
+                        });
                     }
                 }
             },
@@ -121,8 +128,15 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
                         c.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        c.cx += defaults.translate.unwrap().x;
-                        c.cy += defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x;
+                        let ty = defaults.translate.unwrap().y;
+
+                        if c.transform.is_none() {
+                            c.transform = Some(Transform::new());
+                        }
+                        c.transform.as_mut().map(|transform| {
+                            transform.translate_add(tx, ty);
+                        });
                     }
                 }
             },
@@ -137,18 +151,13 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
                     if defaults.translate.is_some() {
                         let tx = defaults.translate.unwrap().x;
                         let ty = defaults.translate.unwrap().y;
-                        for cmd in p.cmd.iter_mut() {
-                            match cmd {
-                                PathCommand::Move(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
-                                PathCommand::Line(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
-                                PathCommand::LineAlonX(ref mut x) => *x += tx,
-                                PathCommand::LineAlonY(ref mut y) => *y += ty,
-                                PathCommand::BezCtrl(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
-                                PathCommand::QuadBezTo(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
-                                PathCommand::CubBezTo(ref mut xy) => { xy[0] += tx; xy[1] += ty; },
-                                _ => (),
-                            }
+
+                        if p.transform.is_none() {
+                            p.transform = Some(Transform::new());
                         }
+                        p.transform.as_mut().map(|transform| {
+                            transform.translate_add(tx, ty);
+                        });
                     }
                 }
             },

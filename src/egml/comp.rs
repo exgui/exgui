@@ -44,7 +44,8 @@ pub struct Comp {
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub inputer: Option<fn(&mut Comp, InputEvent) -> ShouldChangeView>,
-    pub modifier: Option<fn(&mut Comp)>,
+    pub modify_handler: Option<fn(&mut Comp)>,
+    pub modifier: Option<fn(&mut Comp, &dyn Any)>,
 }
 
 impl Comp {
@@ -100,7 +101,7 @@ impl Comp {
             mem::replace(&mut comp.view_node, Some(view_node));
             false
         });
-        self.modifier = Some(|comp: &mut Comp| {
+        self.modify_handler = Some(|comp: &mut Comp| {
             let boxed_model = mem::replace(&mut comp.model, None)
                 .expect("Modifier can't extract model");
             comp.view_node_mut::<MYMC>().modify(&(*boxed_model));
@@ -153,8 +154,11 @@ impl Comp {
         }
     }
 
-    pub fn modify(&mut self) {
+    pub fn modify(&mut self, model: Option<&dyn Any>) {
         self.modifier.map(|modifier| {
+            modifier(self, model.expect("Call `Comp::modify` without model, but modifier is exists"))
+        });
+        self.modify_handler.map(|modifier| {
             modifier(self)
         });
     }
