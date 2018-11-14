@@ -2,11 +2,13 @@ pub mod macros;
 pub mod unit;
 pub mod comp;
 pub mod shape;
+pub mod paint;
 pub mod transform;
 
 pub use self::unit::*;
 pub use self::comp::*;
 pub use self::shape::*;
+pub use self::paint::*;
 pub use self::transform::*;
 
 use std::any::Any;

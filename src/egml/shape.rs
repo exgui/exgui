@@ -1,5 +1,6 @@
 use std::any::Any;
 use egml::transform::Transform;
+use egml::paint::{Paint, Color, Gradient};
 
 pub enum Shape {
     Rect(Rect),
@@ -199,40 +200,8 @@ impl Group {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Color {
-    Red,
-    Green,
-    Blue,
-    Yellow,
-    White,
-    Black,
-    RGB(f32, f32, f32),
-}
-
-impl Color {
-    pub fn as_arr(&self) -> [f32; 4] {
-        match *self {
-            Color::Red => [1.0, 0.0, 0.0, 1.0],
-            Color::Green => [0.0, 1.0, 0.0, 1.0],
-            Color::Blue => [0.0, 0.0, 1.0, 1.0],
-            Color::Yellow => [1.0, 1.0, 0.0, 1.0],
-            Color::White => [1.0, 1.0, 1.0, 1.0],
-            Color::Black => [0.0, 0.0, 0.0, 1.0],
-            Color::RGB(r, g, b) => [r, g, b, 1.0],
-        }
-    }
-}
-
-impl Default for Color {
-    fn default() -> Self {
-        Color::Black
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
 pub struct Stroke {
-    pub color: Color,
-    pub transparent: f32,
+    pub paint: Paint,
     pub width: f32,
     pub line_cap: LineCap,
     pub line_join: LineJoin,
@@ -242,8 +211,7 @@ pub struct Stroke {
 impl Default for Stroke {
     fn default() -> Self {
         Self {
-            color: Default::default(),
-            transparent: 0.0,
+            paint: Default::default(),
             width: 1.0,
             line_cap: LineCap::Butt,
             line_join: LineJoin::Miter,
@@ -255,7 +223,7 @@ impl Default for Stroke {
 impl From<Color> for Stroke {
     fn from(color: Color) -> Self {
         Stroke {
-            color,
+            paint: color.into(),
             ..Default::default()
         }
     }
@@ -264,7 +232,7 @@ impl From<Color> for Stroke {
 impl From<(Color, f32)> for Stroke {
     fn from((color, width): (Color, f32)) -> Self {
         Stroke {
-            color,
+            paint: color.into(),
             width,
             ..Default::default()
         }
@@ -272,11 +240,29 @@ impl From<(Color, f32)> for Stroke {
 }
 
 impl From<(Color, f32, f32)> for Stroke {
-    fn from((color, width, transparent): (Color, f32, f32)) -> Self {
+    fn from((color, width, alpha): (Color, f32, f32)) -> Self {
         Stroke {
-            color,
+            paint: color.with_alpha(alpha).into(),
             width,
-            transparent,
+            ..Default::default()
+        }
+    }
+}
+
+impl From<Gradient> for Stroke {
+    fn from(gradient: Gradient) -> Self {
+        Stroke {
+            paint: gradient.into(),
+            ..Default::default()
+        }
+    }
+}
+
+impl From<(Gradient, f32)> for Stroke {
+    fn from((gradient, width): (Gradient, f32)) -> Self {
+        Stroke {
+            paint: gradient.into(),
+            width,
             ..Default::default()
         }
     }
@@ -300,24 +286,29 @@ pub enum LineJoin {
 
 #[derive(Debug, Default, Clone, Copy)]
 pub struct Fill {
-    pub color: Color,
-    pub transparent: f32,
+    pub paint: Paint,
 }
 
 impl From<Color> for Fill {
     fn from(color: Color) -> Self {
         Fill {
-            color,
-            transparent: 0.0,
+            paint: color.into(),
         }
     }
 }
 
 impl From<(Color, f32)> for Fill {
-    fn from((color, transparent): (Color, f32)) -> Self {
+    fn from((color, alpha): (Color, f32)) -> Self {
         Fill {
-            color,
-            transparent,
+            paint: color.with_alpha(alpha).into(),
+        }
+    }
+}
+
+impl From<Gradient> for Fill {
+    fn from(gradient: Gradient) -> Self {
+        Fill {
+            paint: gradient.into(),
         }
     }
 }
