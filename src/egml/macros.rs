@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Listener};
+use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Font, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -195,7 +195,7 @@ macro_rules! egml_impl {
 //        egml_impl! { @unit $stack ($($tail)*) }
 //    };
     (@unit $stack:ident $shape:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
-        set_attr!($stack, $shape.$attr = $val);
+        set_attr!($stack, $shape.$attr = $crate::egml::Converter::convert($val));
         egml_impl! { @unit $stack $shape ($($tail)*) }
     };
     // End of openging tag
@@ -283,6 +283,7 @@ pub type rect = Rect;
 pub type circle = Circle;
 pub type path = Path;
 pub type group = Group;
+pub type font = Font;
 
 #[doc(hidden)]
 pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {

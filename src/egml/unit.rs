@@ -90,7 +90,13 @@ impl<MC: ModelComponent> Unit<MC> {
                     (modifier)(p, model);
                 }
             },
+            Shape::Font(ref mut f) => {
+                if let Some(modifier) = f.modifier {
+                    (modifier)(f, model);
+                }
+            },
             Shape::Group(_) => {},
+            Shape::Text(_) => {},
         }
     }
 }
@@ -184,6 +190,28 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
                     return true;
                 }
             },
+            Shape::Font(ref mut f) => {
+                if let Some(defaults) = defaults {
+                    if defaults.fill.is_some() && f.fill.is_none() {
+                        f.fill = defaults.fill;
+                    }
+                    if defaults.stroke.is_some() && f.stroke.is_none() {
+                        f.stroke = defaults.stroke;
+                    }
+                    if defaults.translate.is_some() {
+                        let tx = defaults.translate.unwrap().x;
+                        let ty = defaults.translate.unwrap().y;
+
+                        if f.transform.is_none() {
+                            f.transform = Some(Transform::new());
+                        }
+                        f.transform.as_mut().map(|transform| {
+                            transform.translate_add(tx, ty);
+                        });
+                    }
+                }
+            },
+            Shape::Text(_) => {},
         }
         false
     }

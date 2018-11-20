@@ -7,6 +7,8 @@ pub enum Shape {
     Circle(Circle),
     Path(Path),
     Group(Group),
+    Font(Font),
+    Text(String),
 }
 
 pub struct ShapeRef<'a>(pub &'a Shape);
@@ -50,6 +52,20 @@ impl<'a> ShapeRef<'a> {
             _ => None,
         }
     }
+
+    pub fn font(&self) -> Option<&Font> {
+        match self.0 {
+            Shape::Font(ref font) => Some(font),
+            _ => None,
+        }
+    }
+
+    pub fn text(&self) -> Option<&String> {
+        match self.0 {
+            Shape::Text(ref text) => Some(text),
+            _ => None,
+        }
+    }
 }
 
 impl<'a> ShapeRefMut<'a> {
@@ -80,6 +96,20 @@ impl<'a> ShapeRefMut<'a> {
             _ => None,
         }
     }
+
+    pub fn font(&mut self) -> Option<&mut Font> {
+        match self.0 {
+            Shape::Font(ref mut font) => Some(font),
+            _ => None,
+        }
+    }
+
+    pub fn text(&mut self) -> Option<&mut String> {
+        match self.0 {
+            Shape::Text(ref mut text) => Some(text),
+            _ => None,
+        }
+    }
 }
 
 impl From<Rect> for Shape {
@@ -103,6 +133,18 @@ impl From<Path> for Shape {
 impl From<Group> for Shape {
     fn from(group: Group) -> Self {
         Shape::Group(group)
+    }
+}
+
+impl From<Font> for Shape {
+    fn from(font: Font) -> Self {
+        Shape::Font(font)
+    }
+}
+
+impl From<String> for Shape {
+    fn from(text: String) -> Self {
+        Shape::Text(text)
     }
 }
 
@@ -196,6 +238,57 @@ pub struct Group {
 impl Group {
     pub fn empty_overrides(&self) -> bool {
         self.stroke.is_none() && self.fill.is_none() && self.translate.is_none()
+    }
+}
+
+#[derive(Default)]
+pub struct Font {
+    pub x: f32,
+    pub y: f32,
+    pub name: String,
+    pub size: f32,
+    pub align: (AlignHor, AlignVer),
+    pub stroke: Option<Stroke>,
+    pub fill: Option<Fill>,
+    pub transform: Option<Transform>,
+    pub modifier: Option<fn(&mut Font, &dyn Any)>,
+}
+
+impl Font {
+    #[inline]
+    pub fn intersect(&self, _x: f32, _y: f32) -> bool {
+        // TODO: calvulate intersect
+//        let (x, y) = self.transform.as_ref()
+//            .map(|t| (x - t.matrix[4], y - t.matrix[5]))
+//            .unwrap_or((x, y));
+        false
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignHor {
+    Left,
+    Right,
+    Center,
+}
+
+impl Default for AlignHor {
+    fn default() -> Self {
+        AlignHor::Left
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AlignVer {
+    Bottom,
+    Middle,
+    Baseline,
+    Top,
+}
+
+impl Default for AlignVer {
+    fn default() -> Self {
+        AlignVer::Top
     }
 }
 

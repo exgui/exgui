@@ -101,6 +101,18 @@ impl<MC: ModelComponent> From<Comp> for Node<MC> {
     }
 }
 
+impl<MC: ModelComponent, T: ToString> From<T> for Node<MC> {
+    fn from(value: T) -> Self {
+        Node::Unit(Unit::new("text", Shape::Text(value.to_string())))
+    }
+}
+
+impl<'a, MC: ModelComponent> From<&'a dyn Viewable<MC>> for Node<MC> {
+    fn from(value: &'a dyn Viewable<MC>) -> Self {
+        value.view()
+    }
+}
+
 impl<MC: ModelComponent> fmt::Debug for Node<MC> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -181,6 +193,42 @@ pub trait Listener<MC: ModelComponent> {
 impl<MC: ModelComponent> fmt::Debug for dyn Listener<MC> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Listener {{ kind: {} }}", self.kind())
+    }
+}
+
+/// Converts property and attach lazy components to it.
+pub trait Converter<TO> {
+    /// Convert one type to another.
+    fn convert(self) -> TO;
+}
+
+impl<T> Converter<T> for T {
+    fn convert(self) -> T {
+        self
+    }
+}
+
+impl<'a, T: Clone> Converter<T> for &'a T {
+    fn convert(self) -> T {
+        self.clone()
+    }
+}
+
+impl<'a> Converter<String> for &'a str {
+    fn convert(self) -> String {
+        self.to_owned()
+    }
+}
+
+impl<'a> Converter<(AlignHor, AlignVer)> for AlignHor {
+    fn convert(self) -> (AlignHor, AlignVer) {
+        (self, AlignVer::default())
+    }
+}
+
+impl<'a> Converter<(AlignHor, AlignVer)> for AlignVer {
+    fn convert(self) -> (AlignHor, AlignVer) {
+        (AlignHor::default(), self)
     }
 }
 
