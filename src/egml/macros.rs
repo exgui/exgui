@@ -218,18 +218,16 @@ macro_rules! egml_impl {
         $crate::egml::macros::child_to_parent(&mut $stack, Some(endtag));
         egml_impl! { $stack ($($tail)*) }
     };
-//    // PATTERN: { for expression }
-//    ($stack:ident ({ for $eval:expr } $($tail:tt)*)) => {
-//        let nodes = $eval;
-//        let mut vlist = $crate::virtual_dom::VList::new();
-//        for node in nodes {
-//            let node = $crate::virtual_dom::VNode::from(node);
-//            vlist.add_child(node);
-//        }
-//        $stack.push(vlist.into());
-//        $crate::macros::child_to_parent(&mut $stack, None);
-//        egml_impl! { $stack ($($tail)*) }
-//    };
+    // PATTERN: { for expression }
+    ($stack:ident ({ for $eval:expr } $($tail:tt)*)) => {
+        let nodes = $eval;
+        let mut unit = $crate::egml::Unit::new("list group", $crate::egml::Group::default().into());
+        for node in nodes {
+            unit.add_child($crate::egml::Node::from(node));
+        }
+        $crate::egml::macros::add_child(&mut $stack, unit.into());
+        egml_impl! { $stack ($($tail)*) }
+    };
 //    // Support root text nodes: #313
 //    // Provides `html!` blocks with only expression inside
 //    ($stack:ident ({ $eval:expr })) => {
