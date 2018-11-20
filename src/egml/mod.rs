@@ -103,7 +103,9 @@ impl<MC: ModelComponent> From<Comp> for Node<MC> {
 
 impl<MC: ModelComponent, T: ToString> From<T> for Node<MC> {
     fn from(value: T) -> Self {
-        Node::Unit(Unit::new("text", Shape::Text(value.to_string())))
+        Node::Unit(Unit::new("text", Shape::Text(
+            Text { content: value.to_string(), ..Default::default() }
+        )))
     }
 }
 

@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Font, Listener};
+use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Font, Text, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -90,11 +90,7 @@ macro_rules! egml_impl {
 //        egml_impl! { @unit $stack ($($tail)*) }
 //    };
     (@unit $stack:ident $shape:ident (modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
-        set_attr!($stack, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn std::any::Any| {
-            let $model = $model.downcast_ref::<$cm>()
-                .expect(concat!("Modifier of ", stringify!($shape), " can't downcast model to ", stringify!($cm)));
-            $handler
-        }));
+        egml_impl! { $stack $shape (false, modifier = |$this, $model:$cm| $handler, $($tail)*) }
         egml_impl! { @unit $stack $shape ($($tail)*) }
     };
     // Events:
@@ -241,6 +237,17 @@ macro_rules! egml_impl {
         $crate::egml::macros::add_child(&mut $stack, node);
         egml_impl! { $stack ($($tail)*) }
     };
+    ($stack:ident (. $shape:ident . modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
+        egml_impl! { $stack $shape (true, modifier = |$this, $model:$cm| $handler, $($tail)*) }
+        egml_impl! { $stack ($($tail)*) }
+    };
+    ($stack:ident $shape:ident ($for_child:expr, modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
+        set_child_attr!($stack, $for_child, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn std::any::Any| {
+            let $model = $model.downcast_ref::<$cm>()
+                .expect(concat!("Modifier of ", stringify!($shape), " can't downcast model to ", stringify!($cm)));
+            $handler
+        }));
+    };
     // "End of paring" rule
     ($stack:ident ()) => {
         $crate::egml::macros::unpack($stack)
@@ -263,8 +270,26 @@ macro_rules! egml {
 #[macro_export]
 macro_rules! set_attr {
     ($stack:ident, $shape:ident.$attr:ident = $val:expr) => {
+        set_child_attr!($stack, false, $shape.$attr = $val);
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! set_child_attr {
+    ($stack:ident, $for_child:expr, $shape:ident.$attr:ident = $val:expr) => {
         {
-            if let Some(&mut Node::Unit(ref mut unit)) = $stack.last_mut() {
+            let last = $stack.last_mut()
+                .and_then(|node| if $for_child {
+                    if let &mut Node::Unit(ref mut unit) = node {
+                        unit.childs.last_mut()
+                    } else {
+                        None
+                    }
+                } else {
+                    Some(node)
+                });
+            if let Some(&mut Node::Unit(ref mut unit)) = last {
                 if let Some(shape) = unit.shape.as_ref_mut().$shape() {
                     shape.$attr = $val;
                 } else {
@@ -284,6 +309,7 @@ pub type circle = Circle;
 pub type path = Path;
 pub type group = Group;
 pub type font = Font;
+pub type text = Text;
 
 #[doc(hidden)]
 pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {

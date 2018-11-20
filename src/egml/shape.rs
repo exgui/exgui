@@ -1,4 +1,5 @@
 use std::any::Any;
+use std::convert::AsRef;
 use egml::transform::Transform;
 use egml::paint::{Paint, Color, Gradient};
 
@@ -8,7 +9,7 @@ pub enum Shape {
     Path(Path),
     Group(Group),
     Font(Font),
-    Text(String),
+    Text(Text),
 }
 
 pub struct ShapeRef<'a>(pub &'a Shape);
@@ -60,7 +61,7 @@ impl<'a> ShapeRef<'a> {
         }
     }
 
-    pub fn text(&self) -> Option<&String> {
+    pub fn text(&self) -> Option<&Text> {
         match self.0 {
             Shape::Text(ref text) => Some(text),
             _ => None,
@@ -104,7 +105,7 @@ impl<'a> ShapeRefMut<'a> {
         }
     }
 
-    pub fn text(&mut self) -> Option<&mut String> {
+    pub fn text(&mut self) -> Option<&mut Text> {
         match self.0 {
             Shape::Text(ref mut text) => Some(text),
             _ => None,
@@ -142,9 +143,15 @@ impl From<Font> for Shape {
     }
 }
 
+impl From<Text> for Shape {
+    fn from(text: Text) -> Self {
+        Shape::Text(text)
+    }
+}
+
 impl From<String> for Shape {
     fn from(text: String) -> Self {
-        Shape::Text(text)
+        Shape::Text(Text { content: text, ..Default::default() })
     }
 }
 
@@ -289,6 +296,18 @@ pub enum AlignVer {
 impl Default for AlignVer {
     fn default() -> Self {
         AlignVer::Top
+    }
+}
+
+#[derive(Default)]
+pub struct Text {
+    pub content: String,
+    pub modifier: Option<fn(&mut Text, &dyn Any)>,
+}
+
+impl AsRef<str> for Text {
+    fn as_ref(&self) -> &str {
+        self.content.as_str()
     }
 }
 

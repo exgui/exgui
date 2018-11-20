@@ -95,8 +95,12 @@ impl<MC: ModelComponent> Unit<MC> {
                     (modifier)(f, model);
                 }
             },
+            Shape::Text(ref mut t) => {
+                if let Some(modifier) = t.modifier {
+                    (modifier)(t, model);
+                }
+            },
             Shape::Group(_) => {},
-            Shape::Text(_) => {},
         }
     }
 }
