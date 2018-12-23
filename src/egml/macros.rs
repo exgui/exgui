@@ -451,11 +451,11 @@ mod tests {
         type Message = ();
         type Properties = ();
 
-        fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> bool {
+        fn update(&mut self, _msg: Self::Message) -> bool {
             unimplemented!()
         }
 
-        fn create(_props: &<Self as ModelComponent>::Properties) -> Self {
+        fn create(_props: &Self::Properties) -> Self {
             Model {
                 val: 0.0,
             }
