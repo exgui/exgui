@@ -494,11 +494,11 @@ mod tests {
     #[test]
     fn set_modifier() {
         let _node: Node<Model> = egml! {
-            <group translate = Some((50.0, 50.0).into()), >
+            <group translate = (50.0, 50.0), >
                 <rect x = 0.0, y = 0.0, width = 300.0, height = 300.0,
-                        fill = None, stroke = Some((Color::Black, 2.0, 0.5).into()), >
+                        fill = None, stroke = (Color::Black, 2.0, 0.5), >
                     <circle cx = 150.0, cy = 150.0, r = 20.0,
-                            fill = Some(Color::Blue.into()),
+                            fill = Color::Blue,
                             modifier = |circle, model: Model| {
                                 circle.cy = model.val;
                             }, />

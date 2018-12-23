@@ -210,6 +210,12 @@ impl<T> Converter<T> for T {
     }
 }
 
+impl<T> Converter<Option<T>> for T {
+    fn convert(self) -> Option<T> {
+        Some(self)
+    }
+}
+
 impl<'a, T: Clone> Converter<T> for &'a T {
     fn convert(self) -> T {
         self.clone()

@@ -1,5 +1,6 @@
 use std::any::Any;
 use std::convert::AsRef;
+use egml::Converter;
 use egml::transform::Transform;
 use egml::paint::{Paint, Color, Gradient};
 
@@ -320,6 +321,21 @@ pub struct Stroke {
     pub miter_limit: f32,
 }
 
+impl Stroke {
+    pub fn color<T: Into<Color>>(color: T) -> Self {
+        Stroke::from(color.into())
+    }
+
+    pub fn gradient<T: Into<Gradient>>(gradient: T) -> Self {
+        Stroke::from(gradient.into())
+    }
+
+    pub fn width(mut self, width: f32) -> Self {
+        self.width = width;
+        self
+    }
+}
+
 impl Default for Stroke {
     fn default() -> Self {
         Self {
@@ -341,6 +357,12 @@ impl From<Color> for Stroke {
     }
 }
 
+impl Converter<Option<Stroke>> for Color {
+    fn convert(self) -> Option<Stroke> {
+        Some(self.into())
+    }
+}
+
 impl From<(Color, f32)> for Stroke {
     fn from((color, width): (Color, f32)) -> Self {
         Stroke {
@@ -348,6 +370,12 @@ impl From<(Color, f32)> for Stroke {
             width,
             ..Default::default()
         }
+    }
+}
+
+impl Converter<Option<Stroke>> for (Color, f32) {
+    fn convert(self) -> Option<Stroke> {
+        Some(self.into())
     }
 }
 
@@ -361,12 +389,24 @@ impl From<(Color, f32, f32)> for Stroke {
     }
 }
 
+impl Converter<Option<Stroke>> for (Color, f32, f32) {
+    fn convert(self) -> Option<Stroke> {
+        Some(self.into())
+    }
+}
+
 impl From<Gradient> for Stroke {
     fn from(gradient: Gradient) -> Self {
         Stroke {
             paint: gradient.into(),
             ..Default::default()
         }
+    }
+}
+
+impl Converter<Option<Stroke>> for Gradient {
+    fn convert(self) -> Option<Stroke> {
+        Some(self.into())
     }
 }
 
@@ -377,6 +417,12 @@ impl From<(Gradient, f32)> for Stroke {
             width,
             ..Default::default()
         }
+    }
+}
+
+impl Converter<Option<Stroke>> for (Gradient, f32) {
+    fn convert(self) -> Option<Stroke> {
+        Some(self.into())
     }
 }
 
@@ -401,11 +447,27 @@ pub struct Fill {
     pub paint: Paint,
 }
 
+impl Fill {
+    pub fn color<T: Into<Color>>(color: T) -> Self {
+        Fill::from(color.into())
+    }
+
+    pub fn gradient<T: Into<Gradient>>(gradient: T) -> Self {
+        Fill::from(gradient.into())
+    }
+}
+
 impl From<Color> for Fill {
     fn from(color: Color) -> Self {
         Fill {
             paint: color.into(),
         }
+    }
+}
+
+impl Converter<Option<Fill>> for Color {
+    fn convert(self) -> Option<Fill> {
+        Some(self.into())
     }
 }
 
@@ -417,11 +479,23 @@ impl From<(Color, f32)> for Fill {
     }
 }
 
+impl Converter<Option<Fill>> for (Color, f32) {
+    fn convert(self) -> Option<Fill> {
+        Some(self.into())
+    }
+}
+
 impl From<Gradient> for Fill {
     fn from(gradient: Gradient) -> Self {
         Fill {
             paint: gradient.into(),
         }
+    }
+}
+
+impl Converter<Option<Fill>> for Gradient {
+    fn convert(self) -> Option<Fill> {
+        Some(self.into())
     }
 }
 
@@ -434,5 +508,11 @@ pub struct Translate {
 impl From<(f32, f32)> for Translate {
     fn from((x, y): (f32, f32)) -> Self {
         Translate { x, y }
+    }
+}
+
+impl Converter<Option<Translate>> for (f32, f32) {
+    fn convert(self) -> Option<Translate> {
+        Some(self.into())
     }
 }

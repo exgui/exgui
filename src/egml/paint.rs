@@ -49,6 +49,12 @@ impl Default for Color {
     }
 }
 
+impl From<(Color, f32)> for Color {
+    fn from((color, alpha): (Color, f32)) -> Self {
+        color.with_alpha(alpha)
+    }
+}
+
 impl From<Color> for Paint {
     fn from(color: Color) -> Self {
         Paint::Color(color)
