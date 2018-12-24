@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use egml::{ModelComponent, Node, Rect, Circle, Path, Group, Font, Text, Listener};
+use egml::{Component, Node, Rect, Circle, Path, Group, Font, Text, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -312,7 +312,7 @@ pub type font = Font;
 pub type text = Text;
 
 #[doc(hidden)]
-pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {
+pub fn unpack<MC: Component>(mut stack: Stack<MC>) -> Node<MC> {
     if stack.len() != 1 {
         panic!("exactly one element have to be in hgml!");
     }
@@ -382,7 +382,7 @@ pub fn unpack<MC: ModelComponent>(mut stack: Stack<MC>) -> Node<MC> {
 //}
 
 #[doc(hidden)]
-pub fn attach_listener<MC: ModelComponent>(stack: &mut Stack<MC>, listener: Box<dyn Listener<MC>>) {
+pub fn attach_listener<MC: Component>(stack: &mut Stack<MC>, listener: Box<dyn Listener<MC>>) {
     if let Some(&mut Node::Unit(ref mut unit)) = stack.last_mut() {
         unit.add_listener(listener);
     } else {
@@ -391,7 +391,7 @@ pub fn attach_listener<MC: ModelComponent>(stack: &mut Stack<MC>, listener: Box<
 }
 
 #[doc(hidden)]
-pub fn add_child<MC: ModelComponent>(stack: &mut Stack<MC>, child: Node<MC>) {
+pub fn add_child<MC: Component>(stack: &mut Stack<MC>, child: Node<MC>) {
     match stack.last_mut() {
         Some(&mut Node::Unit(ref mut unit)) => {
             unit.add_child(child);
@@ -406,7 +406,7 @@ pub fn add_child<MC: ModelComponent>(stack: &mut Stack<MC>, child: Node<MC>) {
 }
 
 #[doc(hidden)]
-pub fn child_to_parent<MC: ModelComponent>(stack: &mut Stack<MC>, endtag: Option<&'static str>) {
+pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'static str>) {
     if let Some(mut node) = stack.pop() {
         // Check the enclosing unit
         // TODO Check it during compilation. Possible?
@@ -447,7 +447,7 @@ mod tests {
         val: f32,
     }
 
-    impl ModelComponent for Model {
+    impl Component for Model {
         type Message = ();
         type Properties = ();
 

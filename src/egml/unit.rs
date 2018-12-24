@@ -2,22 +2,22 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 use egml::{
-    ModelComponent, ChangeView, Viewable, Drawable, DrawableChilds,
+    Component, ChangeView, Viewable, Drawable, DrawableChilds,
     Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
 use controller::{InputEvent, MousePos};
 
-pub struct Unit<MC: ModelComponent> {
+pub struct Unit<M: Component> {
     pub name: Cow<'static, str>,
     pub shape: Shape,
     pub value: Option<String>,
     pub attrs: Attrs,
-    pub childs: Vec<Node<MC>>,
-    pub listeners: Vec<Box<dyn Listener<MC>>>,
+    pub childs: Vec<Node<M>>,
+    pub listeners: Vec<Box<dyn Listener<M>>>,
 }
 
-impl<MC: ModelComponent> Unit<MC> {
+impl<M: Component> Unit<M> {
     pub fn new(name: &'static str, shape: Shape) -> Self {
         Unit {
             name: name.into(),
@@ -35,17 +35,17 @@ impl<MC: ModelComponent> Unit<MC> {
     }
 
     /// Add `Node` child.
-    pub fn add_child(&mut self, child: Node<MC>) {
+    pub fn add_child(&mut self, child: Node<M>) {
         self.childs.push(child);
     }
 
     /// Adds new listener to the node.
     /// It's boxed because we want to keep it in a single list.
-    pub fn add_listener(&mut self, listener: Box<dyn Listener<MC>>) {
+    pub fn add_listener(&mut self, listener: Box<dyn Listener<M>>) {
         self.listeners.push(listener);
     }
 
-    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ChangeView {
+    pub fn input(&mut self, event: InputEvent, model: &mut M) -> ChangeView {
         match event {
             InputEvent::MousePress(pos) => {
                 self.mouse_press(pos, model)
@@ -53,7 +53,7 @@ impl<MC: ModelComponent> Unit<MC> {
         }
     }
 
-    pub fn mouse_press(&mut self, pos: MousePos, model: &mut MC) -> ChangeView {
+    pub fn mouse_press(&mut self, pos: MousePos, model: &mut M) -> ChangeView {
         let mut should_change = ChangeView::None;
 
         if self.intersect(pos.x, pos.y) {
@@ -101,7 +101,7 @@ impl<MC: ModelComponent> Unit<MC> {
     }
 }
 
-impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
+impl<M: Component + Viewable<M>> Unit<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self.shape {
             Shape::Rect(ref mut r) => {
@@ -217,7 +217,7 @@ impl<MC: ModelComponent + Viewable<MC>> Unit<MC> {
     }
 }
 
-impl<MC: ModelComponent> Drawable for Unit<MC> {
+impl<M: Component> Drawable for Unit<M> {
     fn shape(&self) -> Option<&Shape> {
         Some(&self.shape)
     }

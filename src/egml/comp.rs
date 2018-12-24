@@ -2,7 +2,7 @@ use std::mem;
 use std::any::Any;
 use std::rc::Rc;
 use egml::{
-    ModelComponent, ChangeView, Viewable, Drawable, DrawableChilds,
+    Component, ChangeView, Viewable, Drawable, DrawableChilds,
     Node, NodeDefaults, Shape, ChildrenProcessed,
 };
 use controller::InputEvent;
@@ -50,47 +50,47 @@ pub struct Comp {
 
 impl Comp {
     /// This method prepares a generator to make a new instance of the `Component`.
-    pub fn lazy<MYMC>() -> (<MYMC as ModelComponent>::Properties, Self)
+    pub fn lazy<MYM>() -> (<MYM as Component>::Properties, Self)
         where
-            MYMC: ModelComponent + Viewable<MYMC>,
+            MYM: Component + Viewable<MYM>,
     {
         (Default::default(), Default::default())
     }
 
-    pub fn new<MYMC>(props: <MYMC as ModelComponent>::Properties) -> Self
+    pub fn new<MYM>(props: <MYM as Component>::Properties) -> Self
         where
-            MYMC: ModelComponent + Viewable<MYMC>,
+            MYM: Component + Viewable<MYM>,
     {
         let mut comp = Comp::default();
-        comp.init::<MYMC>(props);
+        comp.init::<MYM>(props);
         comp
     }
 
     /// Create model and attach properties associated with the component.
-    pub fn init<MYMC>(&mut self, props: <MYMC as ModelComponent>::Properties)
+    pub fn init<MYM>(&mut self, props: <MYM as Component>::Properties)
         where
-            MYMC: ModelComponent + Viewable<MYMC>,
+            MYM: Component + Viewable<MYM>,
     {
-        let model = <MYMC as ModelComponent>::create(&props);
+        let model = <MYM as Component>::create(&props);
         let node = model.view();
         self.model = Some(Box::new(model));
         self.view_node = Some(Box::new(node));
         self.props = Some(Box::new(props));
         self.resolver = Some(|comp: &mut Comp| {
             let defaults = comp.cloned_defaults();
-            comp.view_node_mut::<MYMC>().resolve(defaults)
+            comp.view_node_mut::<MYM>().resolve(defaults)
         });
         self.drawer = Some(|comp: &Comp| {
-            comp.view_node::<MYMC>() as &dyn Drawable
+            comp.view_node::<MYM>() as &dyn Drawable
         });
         self.inputer = Some(|comp: &mut Comp, event: InputEvent| {
             let mut view_node = mem::replace(&mut comp.view_node, None)
                 .expect("Inputer can't extract node");
             {
                 let defaults = comp.cloned_defaults();
-                let model = comp.model_mut::<MYMC>();
+                let model = comp.model_mut::<MYM>();
                 let should_change = (*view_node)
-                    .downcast_mut::<Node<MYMC>>().expect("Inputer can't downcast node")
+                    .downcast_mut::<Node<MYM>>().expect("Inputer can't downcast node")
                     .input(event, model);
 
                 match should_change {
@@ -101,7 +101,7 @@ impl Comp {
                     },
                     ChangeView::Modify => {
                         (*view_node)
-                            .downcast_mut::<Node<MYMC>>().expect("Inputer can't downcast node")
+                            .downcast_mut::<Node<MYM>>().expect("Inputer can't downcast node")
                             .modify(model);
                     },
                     ChangeView::None => (),
@@ -113,7 +113,7 @@ impl Comp {
         self.modify_handler = Some(|comp: &mut Comp| {
             let boxed_model = mem::replace(&mut comp.model, None)
                 .expect("Modifier can't extract model");
-            comp.view_node_mut::<MYMC>().modify(&(*boxed_model));
+            comp.view_node_mut::<MYM>().modify(&(*boxed_model));
             mem::replace(&mut comp.model, Some(boxed_model));
         });
     }
@@ -125,22 +125,22 @@ impl Comp {
         )
     }
 
-    pub fn view_node<M: ModelComponent>(&self) -> &Node<M> {
+    pub fn view_node<M: Component>(&self) -> &Node<M> {
         let node = self.view_node.as_ref().expect("Can't downcast node - it is None");
         (*(*node)).downcast_ref::<Node<M>>().expect("Can't downcast node")
     }
 
-    pub fn view_node_mut<M: ModelComponent>(&mut self) -> &mut Node<M> {
+    pub fn view_node_mut<M: Component>(&mut self) -> &mut Node<M> {
         let node = self.view_node.as_mut().expect("Can't downcast node - it is None");
         (*(*node)).downcast_mut::<Node<M>>().expect("Can't downcast node")
     }
 
-    pub fn model<M: ModelComponent>(&self) -> &M {
+    pub fn model<M: Component>(&self) -> &M {
         let model = self.model.as_ref().expect("Can't downcast model - it is None");
         (*(*model)).downcast_ref::<M>().expect("Can't downcast model")
     }
 
-    pub fn model_mut<M: ModelComponent>(&mut self) -> &mut M {
+    pub fn model_mut<M: Component>(&mut self) -> &mut M {
         let model = self.model.as_mut().expect("Can't downcast model - it is None");
         (*(*model)).downcast_mut::<M>().expect("Can't downcast model")
     }
@@ -155,11 +155,11 @@ impl Comp {
         self.defaults.as_ref().map(|d| Rc::clone(d))
     }
 
-    pub fn send<MC: ModelComponent + Viewable<MC>>(&mut self, msg: MC::Message) {
-        let should_change = self.model_mut::<MC>().update(msg);
+    pub fn send<M: Component + Viewable<M>>(&mut self, msg: M::Message) {
+        let should_change = self.model_mut::<M>().update(msg);
         match should_change {
             ChangeView::Rebuild => {
-                let mut new_node = self.model::<MC> ().view();
+                let mut new_node = self.model::<M> ().view();
                 new_node.resolve(self.cloned_defaults());
                 self.view_node = Some(Box::new(new_node));
             },
@@ -199,23 +199,23 @@ impl Drawable for Comp {
 }
 
 /// Converts property and attach lazy components to it.
-pub trait Transformer<MC: ModelComponent, FROM, TO> {
+pub trait Transformer<M: Component, FROM, TO> {
     /// Transforms one type to another.
     fn transform(&mut self, from: FROM) -> TO;
 }
 
-impl<MC, T> Transformer<MC, T, T> for Comp
+impl<M, T> Transformer<M, T, T> for Comp
     where
-        MC: ModelComponent,
+        M: Component,
 {
     fn transform(&mut self, from: T) -> T {
         from
     }
 }
 
-impl<'a, MC, T> Transformer<MC, &'a T, T> for Comp
+impl<'a, M, T> Transformer<M, &'a T, T> for Comp
     where
-        MC: ModelComponent,
+        M: Component,
         T: Clone,
 {
     fn transform(&mut self, from: &'a T) -> T {
@@ -223,9 +223,9 @@ impl<'a, MC, T> Transformer<MC, &'a T, T> for Comp
     }
 }
 
-impl<'a, MC> Transformer<MC, &'a str, String> for Comp
+impl<'a, M> Transformer<M, &'a str, String> for Comp
     where
-        MC: ModelComponent,
+        M: Component,
 {
     fn transform(&mut self, from: &'a str) -> String {
         from.to_owned()

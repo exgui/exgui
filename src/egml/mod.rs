@@ -16,8 +16,8 @@ use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use controller::InputEvent;
 
-pub enum Node<MC: ModelComponent> {
-    Unit(Unit<MC>),
+pub enum Node<M: Component> {
+    Unit(Unit<M>),
     Comp(Comp),
 //    List(List),
 }
@@ -29,8 +29,8 @@ pub struct NodeDefaults {
     translate: Option<Translate>,
 }
 
-impl<MC: ModelComponent> Node<MC> {
-    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ChangeView {
+impl<M: Component> Node<M> {
+    pub fn input(&mut self, event: InputEvent, model: &mut M) -> ChangeView {
         match self {
             Node::Unit(ref mut unit) => unit.input(event, model),
             Node::Comp(ref mut comp) => comp.input(event),
@@ -40,7 +40,7 @@ impl<MC: ModelComponent> Node<MC> {
 
 pub type ChildrenProcessed = bool;
 
-impl<MC: ModelComponent + Viewable<MC>> Node<MC> {
+impl<M: Component + Viewable<M>> Node<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self {
             Node::Unit(ref mut unit) => {
@@ -73,7 +73,7 @@ impl<MC: ModelComponent + Viewable<MC>> Node<MC> {
     }
 }
 
-impl<MC: ModelComponent> Drawable for Node<MC> {
+impl<M: Component> Drawable for Node<M> {
     fn shape(&self) -> Option<&Shape> {
         match self {
             Node::Unit(ref unit) => unit.shape(),
@@ -89,19 +89,19 @@ impl<MC: ModelComponent> Drawable for Node<MC> {
     }
 }
 
-impl<MC: ModelComponent> From<Unit<MC>> for Node<MC> {
-    fn from(unit: Unit<MC>) -> Self {
+impl<M: Component> From<Unit<M>> for Node<M> {
+    fn from(unit: Unit<M>) -> Self {
         Node::Unit(unit)
     }
 }
 
-impl<MC: ModelComponent> From<Comp> for Node<MC> {
+impl<M: Component> From<Comp> for Node<M> {
     fn from(comp: Comp) -> Self {
         Node::Comp(comp)
     }
 }
 
-impl<MC: ModelComponent, T: ToString> From<T> for Node<MC> {
+impl<M: Component, T: ToString> From<T> for Node<M> {
     fn from(value: T) -> Self {
         Node::Unit(Unit::new("text", Shape::Text(
             Text { content: value.to_string(), ..Default::default() }
@@ -109,13 +109,13 @@ impl<MC: ModelComponent, T: ToString> From<T> for Node<MC> {
     }
 }
 
-impl<'a, MC: ModelComponent> From<&'a dyn Viewable<MC>> for Node<MC> {
-    fn from(value: &'a dyn Viewable<MC>) -> Self {
+impl<'a, M: Component> From<&'a dyn Viewable<M>> for Node<M> {
+    fn from(value: &'a dyn Viewable<M>) -> Self {
         value.view()
     }
 }
 
-impl<MC: ModelComponent> fmt::Debug for Node<MC> {
+impl<M: Component> fmt::Debug for Node<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             Node::Unit(ref unit) => unit.fmt(f),
@@ -158,7 +158,7 @@ impl ChangeView {
 pub type ShouldChangeView = bool;
 
 /// An interface of a UI-component. Uses `self` as a model.
-pub trait ModelComponent: Sized + 'static {
+pub trait Component: Sized + 'static {
     /// Control message type which `update` loop get.
     type Message: 'static;
 
@@ -185,9 +185,9 @@ pub trait ModelComponent: Sized + 'static {
 }
 
 /// Should be viewed relative to context and component environment.
-pub trait Viewable<MC: ModelComponent> {
+pub trait Viewable<M: Component> {
     /// Called by rendering loop.
-    fn view(&self) -> Node<MC>;
+    fn view(&self) -> Node<M>;
 }
 
 pub type DrawableChilds<'a> = Box<dyn Iterator<Item=&'a dyn Drawable> + 'a>;
@@ -214,14 +214,14 @@ pub trait Drawable {
 
 /// `Listener` trait is an universal implementation of an event listener
 /// which helps to bind Node-listener to input controller's output.
-pub trait Listener<MC: ModelComponent> {
+pub trait Listener<M: Component> {
     /// Returns event type.
     fn kind(&self) -> &'static str;
 
-    fn handle(&self, event: event::Event) -> Option<<MC as ModelComponent>::Message>;
+    fn handle(&self, event: event::Event) -> Option<<M as Component>::Message>;
 }
 
-impl<MC: ModelComponent> fmt::Debug for dyn Listener<MC> {
+impl<M: Component> fmt::Debug for dyn Listener<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Listener {{ kind: {} }}", self.kind())
     }
@@ -281,21 +281,21 @@ pub mod event {
 
     pub mod listener {
         use super::*;
-        use egml::{Listener, Viewable, ModelComponent};
+        use egml::{Listener, Viewable, Component};
 
         pub struct ClickListener<F, MSG>(pub F)
             where F: Fn(ClickEvent) -> MSG + 'static;
 
-        impl<T, MC> Listener<MC> for ClickListener<T, <MC as ModelComponent>::Message>
+        impl<T, M> Listener<M> for ClickListener<T, <M as Component>::Message>
             where
-                T: Fn(ClickEvent) -> <MC as ModelComponent>::Message + 'static,
-                MC: ModelComponent + Viewable<MC>,
+                T: Fn(ClickEvent) -> <M as Component>::Message + 'static,
+                M: Component + Viewable<M>,
         {
             fn kind(&self) -> &'static str {
                 stringify!(ClickEvent)
             }
 
-            fn handle(&self, event: Event) -> Option<<MC as ModelComponent>::Message> {
+            fn handle(&self, event: Event) -> Option<<M as Component>::Message> {
                 match event {
                     Event::Click(event) => Some((self.0)(event)),
                     _ => None,
@@ -319,15 +319,15 @@ mod tests {
 
     struct Model;
 
-    impl ModelComponent for Model {
+    impl Component for Model {
         type Message = ();
         type Properties = ();
 
-        fn create(_props: &<Self as ModelComponent>::Properties) -> Self {
+        fn create(_props: &<Self as Component>::Properties) -> Self {
             Model
         }
 
-        fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> ChangeView {
+        fn update(&mut self, _msg: <Self as Component>::Message) -> ChangeView {
             unimplemented!()
         }
     }
