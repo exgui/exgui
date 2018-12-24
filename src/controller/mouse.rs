@@ -1,4 +1,4 @@
-use egml::{ModelComponent, Node, Comp, ShouldChangeView};
+use egml::{ModelComponent, Node, Comp, ChangeView};
 use controller::InputEvent;
 
 pub struct MouseInput {
@@ -41,12 +41,12 @@ impl MouseInput {
         }
     }
 
-    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &mut Node<MC>) -> ShouldChangeView {
+    pub fn left_pressed<MC: ModelComponent>(&self, model: &mut MC, node: &mut Node<MC>) -> ChangeView {
         let pos = self.last_pos();
         node.input(InputEvent::MousePress(pos), model)
     }
 
-    pub fn left_pressed_comp(&self, comp: &mut Comp) -> ShouldChangeView {
+    pub fn left_pressed_comp(&self, comp: &mut Comp) -> ChangeView {
         let pos = self.last_pos();
         comp.input(InputEvent::MousePress(pos))
     }

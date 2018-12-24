@@ -2,7 +2,7 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 use egml::{
-    ModelComponent, ShouldChangeView, Viewable, Drawable, DrawableChilds,
+    ModelComponent, ChangeView, Viewable, Drawable, DrawableChilds,
     Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
@@ -45,7 +45,7 @@ impl<MC: ModelComponent> Unit<MC> {
         self.listeners.push(listener);
     }
 
-    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ShouldChangeView {
+    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ChangeView {
         match event {
             InputEvent::MousePress(pos) => {
                 self.mouse_press(pos, model)
@@ -53,22 +53,18 @@ impl<MC: ModelComponent> Unit<MC> {
         }
     }
 
-    pub fn mouse_press(&mut self, pos: MousePos, model: &mut MC) -> ShouldChangeView {
-        let mut should_change = false;
+    pub fn mouse_press(&mut self, pos: MousePos, model: &mut MC) -> ChangeView {
+        let mut should_change = ChangeView::None;
 
         if self.intersect(pos.x, pos.y) {
             for listener in self.listeners.iter() {
                 if let Some(msg) = listener.handle(Event::Click(ClickEvent)) {
-                    if model.update(msg) {
-                        should_change = true;
-                    }
+                    should_change.up(model.update(msg));
                 }
             }
         }
         for child in self.childs.iter_mut() {
-            if child.input(InputEvent::MousePress(pos), model) {
-                should_change = true;
-            }
+            should_change.up(child.input(InputEvent::MousePress(pos), model));
         }
         should_change
     }

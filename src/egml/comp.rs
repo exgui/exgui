@@ -2,7 +2,7 @@ use std::mem;
 use std::any::Any;
 use std::rc::Rc;
 use egml::{
-    ModelComponent, ShouldChangeView, Viewable, Drawable, DrawableChilds,
+    ModelComponent, ChangeView, Viewable, Drawable, DrawableChilds,
     Node, NodeDefaults, Shape, ChildrenProcessed,
 };
 use controller::InputEvent;
@@ -43,7 +43,7 @@ pub struct Comp {
     pub defaults: Option<Rc<NodeDefaults>>,
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
-    pub inputer: Option<fn(&mut Comp, InputEvent) -> ShouldChangeView>,
+    pub inputer: Option<fn(&mut Comp, InputEvent) -> ChangeView>,
     pub modify_handler: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn Any)>,
 }
@@ -89,17 +89,26 @@ impl Comp {
             {
                 let defaults = comp.cloned_defaults();
                 let model = comp.model_mut::<MYMC>();
-                let result = (*view_node)
+                let should_change = (*view_node)
                     .downcast_mut::<Node<MYMC>>().expect("Inputer can't downcast node")
                     .input(event, model);
-                if result {
-                    let mut new_node = model.view();
-                    new_node.resolve(defaults);
-                    view_node = Box::new(new_node);
+
+                match should_change {
+                    ChangeView::Rebuild => {
+                        let mut new_node = model.view();
+                        new_node.resolve(defaults);
+                        view_node = Box::new(new_node);
+                    },
+                    ChangeView::Modify => {
+                        (*view_node)
+                            .downcast_mut::<Node<MYMC>>().expect("Inputer can't downcast node")
+                            .modify(model);
+                    },
+                    ChangeView::None => (),
                 }
             }
             mem::replace(&mut comp.view_node, Some(view_node));
-            false
+            ChangeView::None
         });
         self.modify_handler = Some(|comp: &mut Comp| {
             let boxed_model = mem::replace(&mut comp.model, None)
@@ -136,10 +145,10 @@ impl Comp {
         (*(*model)).downcast_mut::<M>().expect("Can't downcast model")
     }
 
-    pub fn input(&mut self, event: InputEvent) -> ShouldChangeView {
+    pub fn input(&mut self, event: InputEvent) -> ChangeView {
         self.inputer.map(|inputer| {
             inputer(self, event)
-        }).unwrap_or(false)
+        }).unwrap_or(ChangeView::None)
     }
 
     pub fn cloned_defaults(&self) -> Option<Rc<NodeDefaults>> {
@@ -147,10 +156,17 @@ impl Comp {
     }
 
     pub fn send<MC: ModelComponent + Viewable<MC>>(&mut self, msg: MC::Message) {
-        if self.model_mut::<MC>().update(msg) {
-            let mut new_node = self.model::<MC>().view();
-            new_node.resolve(self.cloned_defaults());
-            self.view_node = Some(Box::new(new_node));
+        let should_change = self.model_mut::<MC>().update(msg);
+        match should_change {
+            ChangeView::Rebuild => {
+                let mut new_node = self.model::<MC> ().view();
+                new_node.resolve(self.cloned_defaults());
+                self.view_node = Some(Box::new(new_node));
+            },
+            ChangeView::Modify => {
+                self.modify_internal();
+            },
+            ChangeView::None => (),
         }
     }
 
@@ -158,6 +174,10 @@ impl Comp {
         self.modifier.map(|modifier| {
             modifier(self, model.expect("Call `Comp::modify` without model, but modifier is exists"))
         });
+        self.modify_internal();
+    }
+
+    pub fn modify_internal(&mut self) {
         self.modify_handler.map(|modifier| {
             modifier(self)
         });

@@ -441,7 +441,7 @@ pub fn child_to_parent<MC: ModelComponent>(stack: &mut Stack<MC>, endtag: Option
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::egml::Color;
+    use ::egml::{Color, ChangeView};
 
     struct Model {
         val: f32,
@@ -451,7 +451,7 @@ mod tests {
         type Message = ();
         type Properties = ();
 
-        fn update(&mut self, _msg: Self::Message) -> bool {
+        fn update(&mut self, _msg: Self::Message) -> ChangeView {
             unimplemented!()
         }
 

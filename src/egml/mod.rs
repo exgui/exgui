@@ -30,7 +30,7 @@ pub struct NodeDefaults {
 }
 
 impl<MC: ModelComponent> Node<MC> {
-    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ShouldChangeView {
+    pub fn input(&mut self, event: InputEvent, model: &mut MC) -> ChangeView {
         match self {
             Node::Unit(ref mut unit) => unit.input(event, model),
             Node::Comp(ref mut comp) => comp.input(event),
@@ -126,6 +126,35 @@ impl<MC: ModelComponent> fmt::Debug for Node<MC> {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ChangeView {
+    Rebuild,
+    Modify,
+    None,
+}
+
+impl ChangeView {
+    pub fn is_rebuild(&self) -> bool {
+        *self == ChangeView::Rebuild
+    }
+
+    pub fn is_modify(&self) -> bool {
+        *self == ChangeView::Modify
+    }
+
+    pub fn is_none(&self) -> bool {
+        *self == ChangeView::None
+    }
+
+    pub fn up(&mut self, other: ChangeView) {
+        match (other, *self) {
+            (ChangeView::Modify, ChangeView::None) => *self = ChangeView::Modify,
+            (ChangeView::Rebuild, _) => *self = ChangeView::Rebuild,
+            _ => (),
+        }
+    }
+}
+
 pub type ShouldChangeView = bool;
 
 /// An interface of a UI-component. Uses `self` as a model.
@@ -144,10 +173,10 @@ pub trait ModelComponent: Sized + 'static {
 
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
-    fn update(&mut self, msg: Self::Message) -> ShouldChangeView;
+    fn update(&mut self, msg: Self::Message) -> ChangeView;
 
     /// This method called when properties changes, and once when component created.
-    fn change(&mut self, _: Self::Properties) -> ShouldChangeView {
+    fn change(&mut self, _: Self::Properties) -> ChangeView {
         unimplemented!("you should implement `change` method for a component with properties")
     }
 
@@ -298,7 +327,7 @@ mod tests {
             Model
         }
 
-        fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> bool {
+        fn update(&mut self, _msg: <Self as ModelComponent>::Message) -> ChangeView {
             unimplemented!()
         }
     }
