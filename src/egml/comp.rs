@@ -1,11 +1,11 @@
 use std::mem;
 use std::any::Any;
 use std::rc::Rc;
-use egml::{
-    Component, ChangeView, Viewable, Drawable, DrawableChilds,
+use crate::egml::{
+    Component, ChangeView, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
     Node, NodeDefaults, Shape, ChildrenProcessed,
 };
-use controller::InputEvent;
+use crate::controller::InputEvent;
 
 trait AsAny {
     fn as_any(&self) -> &dyn Any;
@@ -43,6 +43,7 @@ pub struct Comp {
     pub defaults: Option<Rc<NodeDefaults>>,
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
+    pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
     pub inputer: Option<fn(&mut Comp, InputEvent) -> ChangeView>,
     pub modify_handler: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn Any)>,
@@ -82,6 +83,9 @@ impl Comp {
         });
         self.drawer = Some(|comp: &Comp| {
             comp.view_node::<MYM>() as &dyn Drawable
+        });
+        self.drawer_mut = Some(|comp: &mut Comp| {
+            comp.view_node_mut::<MYM>() as &mut dyn Drawable
         });
         self.inputer = Some(|comp: &mut Comp, event: InputEvent| {
             let mut view_node = mem::replace(&mut comp.view_node, None)
@@ -191,10 +195,20 @@ impl Drawable for Comp {
         })
     }
 
+    fn shape_mut(&mut self) -> Option<&mut Shape> {
+        let drawer = self.drawer_mut?;
+        drawer(self).shape_mut()
+    }
+
     fn childs(&self) -> Option<DrawableChilds> {
         self.drawer.and_then(|drawer| {
             drawer(self).childs()
         })
+    }
+
+    fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
+        let drawer = self.drawer_mut?;
+        drawer(self).childs_mut()
     }
 }
 

@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use egml::{Component, Node, Rect, Circle, Path, Group, Font, Text, Listener};
+use crate::egml::{Component, Node, Rect, Circle, Path, Group, Font, Text, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -441,7 +441,7 @@ pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::egml::{Color, ChangeView};
+    use crate::egml::{self, Color, ChangeView};
 
     struct Model {
         val: f32,
@@ -466,25 +466,25 @@ mod tests {
     fn set_attr() {
         let mut stack = Vec::<Node<Model>>::new();
 
-        let rect = ::egml::macros::rect::default();
-        let unit = ::egml::Unit::new("rect", rect.into());
+        let rect = egml::macros::rect::default();
+        let unit = egml::Unit::new("rect", rect.into());
         stack.push(unit.into());
-        set_attr!(stack, rect.x = 1.2);
+        set_attr!(stack, rect.x = 1.2.into());
         match stack.last().unwrap() {
             Node::Unit(ref unit) => {
-                let x = unit.shape.as_ref().rect().unwrap().x;
+                let x = unit.shape.as_ref().rect().unwrap().x.val();
                 assert_eq!(1.2, x);
             },
             _ => (),
         }
 
-        let circle = ::egml::macros::circle::default();
-        let unit = ::egml::Unit::new("circle", circle.into());
+        let circle = egml::macros::circle::default();
+        let unit = egml::Unit::new("circle", circle.into());
         stack.push(unit.into());
-        set_attr!(stack, circle.r = 2.5);
+        set_attr!(stack, circle.r = 2.5.into());
         match stack.last().unwrap() {
             Node::Unit(ref unit) => {
-                let r = unit.shape.as_ref().circle().unwrap().r;
+                let r = unit.shape.as_ref().circle().unwrap().r.val();
                 assert_eq!(2.5, r);
             },
             _ => (),
@@ -500,7 +500,7 @@ mod tests {
                     <circle cx = 150.0, cy = 150.0, r = 20.0,
                             fill = Color::Blue,
                             modifier = |circle, model: Model| {
-                                circle.cy = model.val;
+                                circle.cy = model.val.into();
                             }, />
                 </rect>
             </group>

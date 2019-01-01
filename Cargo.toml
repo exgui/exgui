@@ -2,5 +2,6 @@
 name = "exgui"
 version = "0.1.0"
 authors = ["XX <freecoder.xx@gmail.com>"]
+edition = "2018"
 
 [dependencies]

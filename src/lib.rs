@@ -1,7 +1,7 @@
 pub mod egml;
 pub mod controller;
 
-pub use egml::*;
+pub use self::egml::*;
 
 #[cfg(test)]
 mod tests {

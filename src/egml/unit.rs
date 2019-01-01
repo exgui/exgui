@@ -1,12 +1,12 @@
 use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
-use egml::{
-    Component, ChangeView, Viewable, Drawable, DrawableChilds,
+use crate::egml::{
+    Component, ChangeView, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
     Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
-use controller::{InputEvent, MousePos};
+use crate::controller::{InputEvent, MousePos};
 
 pub struct Unit<M: Component> {
     pub name: Cow<'static, str>,
@@ -113,8 +113,8 @@ impl<M: Component + Viewable<M>> Unit<M> {
                         r.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        let tx = defaults.translate.unwrap().x;
-                        let ty = defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x.val();
+                        let ty = defaults.translate.unwrap().y.val();
 
                         if r.transform.is_none() {
                             r.transform = Some(Transform::new());
@@ -134,8 +134,8 @@ impl<M: Component + Viewable<M>> Unit<M> {
                         c.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        let tx = defaults.translate.unwrap().x;
-                        let ty = defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x.val();
+                        let ty = defaults.translate.unwrap().y.val();
 
                         if c.transform.is_none() {
                             c.transform = Some(Transform::new());
@@ -155,8 +155,8 @@ impl<M: Component + Viewable<M>> Unit<M> {
                         p.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        let tx = defaults.translate.unwrap().x;
-                        let ty = defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x.val();
+                        let ty = defaults.translate.unwrap().y.val();
 
                         if p.transform.is_none() {
                             p.transform = Some(Transform::new());
@@ -199,8 +199,8 @@ impl<M: Component + Viewable<M>> Unit<M> {
                         f.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
-                        let tx = defaults.translate.unwrap().x;
-                        let ty = defaults.translate.unwrap().y;
+                        let tx = defaults.translate.unwrap().x.val();
+                        let ty = defaults.translate.unwrap().y.val();
 
                         if f.transform.is_none() {
                             f.transform = Some(Transform::new());
@@ -222,8 +222,16 @@ impl<M: Component> Drawable for Unit<M> {
         Some(&self.shape)
     }
 
+    fn shape_mut(&mut self) -> Option<&mut Shape> {
+        Some(&mut self.shape)
+    }
+
     fn childs(&self) -> Option<DrawableChilds> {
         Some(Box::new(self.childs.iter().map(|node| node as &dyn Drawable)))
+    }
+
+    fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
+        Some(Box::new(self.childs.iter_mut().map(|node| node as &mut dyn Drawable)))
     }
 }
 

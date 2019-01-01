@@ -1,20 +1,22 @@
 pub mod macros;
+pub mod value;
+pub mod converter;
 pub mod unit;
 pub mod comp;
 pub mod shape;
-pub mod paint;
 pub mod transform;
 
+pub use self::value::*;
+pub use self::converter::*;
 pub use self::unit::*;
 pub use self::comp::*;
 pub use self::shape::*;
-pub use self::paint::*;
 pub use self::transform::*;
 
 use std::any::Any;
 use std::fmt::{self, Pointer};
 use std::rc::Rc;
-use controller::InputEvent;
+use crate::controller::InputEvent;
 
 pub enum Node<M: Component> {
     Unit(Unit<M>),
@@ -81,10 +83,24 @@ impl<M: Component> Drawable for Node<M> {
         }
     }
 
+    fn shape_mut(&mut self) -> Option<&mut Shape> {
+        match self {
+            Node::Unit(ref mut unit) => unit.shape_mut(),
+            Node::Comp(ref mut comp) => comp.shape_mut(),
+        }
+    }
+
     fn childs(&self) -> Option<DrawableChilds> {
         match self {
             Node::Unit(ref unit) => Drawable::childs(unit),
             Node::Comp(ref comp) => Drawable::childs(comp),
+        }
+    }
+
+    fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
+        match self {
+            Node::Unit(ref mut unit) => Drawable::childs_mut(unit),
+            Node::Comp(ref mut comp) => Drawable::childs_mut(comp),
         }
     }
 }
@@ -191,12 +207,17 @@ pub trait Viewable<M: Component> {
 }
 
 pub type DrawableChilds<'a> = Box<dyn Iterator<Item=&'a dyn Drawable> + 'a>;
+pub type DrawableChildsMut<'a> = Box<dyn Iterator<Item=&'a mut dyn Drawable> + 'a>;
 
 pub trait Drawable {
     /// Called by rendering loop.
     fn shape(&self) -> Option<&Shape>;
 
+    fn shape_mut(&mut self) -> Option<&mut Shape>;
+
     fn childs(&self) -> Option<DrawableChilds>;
+
+    fn childs_mut(&mut self) -> Option<DrawableChildsMut>;
 
     fn intersect(&self, x: f32, y: f32) -> bool {
         if let Some(shape) = self.shape() {
@@ -227,48 +248,6 @@ impl<M: Component> fmt::Debug for dyn Listener<M> {
     }
 }
 
-/// Converts property and attach lazy components to it.
-pub trait Converter<TO> {
-    /// Convert one type to another.
-    fn convert(self) -> TO;
-}
-
-impl<T> Converter<T> for T {
-    fn convert(self) -> T {
-        self
-    }
-}
-
-impl<T> Converter<Option<T>> for T {
-    fn convert(self) -> Option<T> {
-        Some(self)
-    }
-}
-
-impl<'a, T: Clone> Converter<T> for &'a T {
-    fn convert(self) -> T {
-        self.clone()
-    }
-}
-
-impl<'a> Converter<String> for &'a str {
-    fn convert(self) -> String {
-        self.to_owned()
-    }
-}
-
-impl<'a> Converter<(AlignHor, AlignVer)> for AlignHor {
-    fn convert(self) -> (AlignHor, AlignVer) {
-        (self, AlignVer::default())
-    }
-}
-
-impl<'a> Converter<(AlignHor, AlignVer)> for AlignVer {
-    fn convert(self) -> (AlignHor, AlignVer) {
-        (AlignHor::default(), self)
-    }
-}
-
 pub mod event {
     #[derive(Clone, Copy, Eq, PartialEq)]
     pub enum Event {
@@ -281,7 +260,7 @@ pub mod event {
 
     pub mod listener {
         use super::*;
-        use egml::{Listener, Viewable, Component};
+        use crate::egml::{Listener, Viewable, Component};
 
         pub struct ClickListener<F, MSG>(pub F)
             where F: Fn(ClickEvent) -> MSG + 'static;
@@ -336,7 +315,9 @@ mod tests {
         fn view(&self) -> Node<Self> {
             let mut rect = Unit::new(
                 "rect",
-                Shape::Rect(Rect { x: 0.0, y: 0.0, width: 50.0, height: 80.0, ..Default::default() })
+                Shape::Rect(
+                    Rect { x: 0.into(), y: 0.into(), width: 50.into(), height: 80.into(), ..Default::default() }
+                )
             );
             let mut group = Unit::new(
                 "group",
@@ -344,7 +325,9 @@ mod tests {
             );
             let circle = Unit::new(
                 "circle",
-                Shape::Circle(Circle { cx: 120.0, cy: 120.0, r: 40.0, ..Default::default() })
+                Shape::Circle(
+                    Circle { cx: 120.into(), cy: 120.into(), r: 40.into(), ..Default::default() }
+                )
             );
             group.childs.push(Node::Unit(circle));
             rect.childs.push(Node::Unit(group));
@@ -361,7 +344,7 @@ mod tests {
                 assert_eq!(1, unit.childs.len());
                 match unit.shape {
                     Shape::Rect(ref rect) => {
-                        assert_eq!(0.0, rect.x);
+                        assert_eq!(0.0, rect.x.val());
                     },
                     _ => (),
                 }
@@ -381,7 +364,7 @@ mod tests {
                                         assert_eq!(0, unit.childs.len());
                                         match unit.shape {
                                             Shape::Circle(ref circle) => {
-                                                assert_eq!(40.0, circle.r);
+                                                assert_eq!(40.0, circle.r.val());
                                             },
                                             _ => (),
                                         }

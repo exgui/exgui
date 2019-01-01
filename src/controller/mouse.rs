@@ -1,5 +1,5 @@
-use egml::{Component, Node, Comp, ChangeView};
-use controller::InputEvent;
+use crate::egml::{Component, Node, Comp, ChangeView};
+use super::InputEvent;
 
 pub struct MouseInput {
     last_mouse_pos: Option<(f64, f64)>,
