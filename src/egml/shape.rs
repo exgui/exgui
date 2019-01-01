@@ -2,8 +2,8 @@ pub mod rect;
 pub mod circle;
 pub mod path;
 pub mod group;
-pub mod font;
 pub mod text;
+pub mod word;
 pub mod paint;
 pub mod stroke;
 pub mod fill;
@@ -13,8 +13,8 @@ pub use self::rect::*;
 pub use self::circle::*;
 pub use self::path::*;
 pub use self::group::*;
-pub use self::font::*;
 pub use self::text::*;
+pub use self::word::*;
 pub use self::paint::*;
 pub use self::stroke::*;
 pub use self::fill::*;
@@ -27,8 +27,8 @@ pub enum Shape {
     Circle(Circle),
     Path(Path),
     Group(Group),
-    Font(Font),
     Text(Text),
+    Word(Word),
 }
 
 pub struct ShapeRef<'a>(pub &'a Shape);
@@ -73,16 +73,16 @@ impl<'a> ShapeRef<'a> {
         }
     }
 
-    pub fn font(&self) -> Option<&Font> {
+    pub fn text(&self) -> Option<&Text> {
         match self.0 {
-            Shape::Font(ref font) => Some(font),
+            Shape::Text(ref text) => Some(text),
             _ => None,
         }
     }
 
-    pub fn text(&self) -> Option<&Text> {
+    pub fn word(&self) -> Option<&Word> {
         match self.0 {
-            Shape::Text(ref text) => Some(text),
+            Shape::Word(ref word) => Some(word),
             _ => None,
         }
     }
@@ -117,16 +117,16 @@ impl<'a> ShapeRefMut<'a> {
         }
     }
 
-    pub fn font(&mut self) -> Option<&mut Font> {
+    pub fn text(&mut self) -> Option<&mut Text> {
         match self.0 {
-            Shape::Font(ref mut font) => Some(font),
+            Shape::Text(ref mut text) => Some(text),
             _ => None,
         }
     }
 
-    pub fn text(&mut self) -> Option<&mut Text> {
+    pub fn word(&mut self) -> Option<&mut Word> {
         match self.0 {
-            Shape::Text(ref mut text) => Some(text),
+            Shape::Word(ref mut word) => Some(word),
             _ => None,
         }
     }
@@ -156,20 +156,20 @@ impl From<Group> for Shape {
     }
 }
 
-impl From<Font> for Shape {
-    fn from(font: Font) -> Self {
-        Shape::Font(font)
-    }
-}
-
 impl From<Text> for Shape {
     fn from(text: Text) -> Self {
         Shape::Text(text)
     }
 }
 
+impl From<Word> for Shape {
+    fn from(word: Word) -> Self {
+        Shape::Word(word)
+    }
+}
+
 impl From<String> for Shape {
     fn from(text: String) -> Self {
-        Shape::Text(Text { content: text, ..Default::default() })
+        Shape::Word(Word { content: text, ..Default::default() })
     }
 }

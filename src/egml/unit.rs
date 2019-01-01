@@ -86,14 +86,14 @@ impl<M: Component> Unit<M> {
                     (modifier)(p, model);
                 }
             },
-            Shape::Font(ref mut f) => {
-                if let Some(modifier) = f.modifier {
-                    (modifier)(f, model);
-                }
-            },
             Shape::Text(ref mut t) => {
                 if let Some(modifier) = t.modifier {
                     (modifier)(t, model);
+                }
+            },
+            Shape::Word(ref mut w) => {
+                if let Some(modifier) = w.modifier {
+                    (modifier)(w, model);
                 }
             },
             Shape::Group(_) => {},
@@ -190,28 +190,28 @@ impl<M: Component + Viewable<M>> Unit<M> {
                     return true;
                 }
             },
-            Shape::Font(ref mut f) => {
+            Shape::Text(ref mut t) => {
                 if let Some(defaults) = defaults {
-                    if defaults.fill.is_some() && f.fill.is_none() {
-                        f.fill = defaults.fill;
+                    if defaults.fill.is_some() && t.fill.is_none() {
+                        t.fill = defaults.fill;
                     }
-                    if defaults.stroke.is_some() && f.stroke.is_none() {
-                        f.stroke = defaults.stroke;
+                    if defaults.stroke.is_some() && t.stroke.is_none() {
+                        t.stroke = defaults.stroke;
                     }
                     if defaults.translate.is_some() {
                         let tx = defaults.translate.unwrap().x.val();
                         let ty = defaults.translate.unwrap().y.val();
 
-                        if f.transform.is_none() {
-                            f.transform = Some(Transform::new());
+                        if t.transform.is_none() {
+                            t.transform = Some(Transform::new());
                         }
-                        f.transform.as_mut().map(|transform| {
+                        t.transform.as_mut().map(|transform| {
                             transform.translate_add(tx, ty);
                         });
                     }
                 }
             },
-            Shape::Text(_) => {},
+            Shape::Word(_) => {},
         }
         false
     }

@@ -119,8 +119,8 @@ impl<M: Component> From<Comp> for Node<M> {
 
 impl<M: Component, T: ToString> From<T> for Node<M> {
     fn from(value: T) -> Self {
-        Node::Unit(Unit::new("text", Shape::Text(
-            Text { content: value.to_string(), ..Default::default() }
+        Node::Unit(Unit::new("text", Shape::Word(
+            Word { content: value.to_string(), ..Default::default() }
         )))
     }
 }

@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use crate::egml::{Component, Node, Rect, Circle, Path, Group, Font, Text, Listener};
+use crate::egml::{Component, Node, Rect, Circle, Path, Group, Text, Word, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -308,8 +308,8 @@ pub type rect = Rect;
 pub type circle = Circle;
 pub type path = Path;
 pub type group = Group;
-pub type font = Font;
 pub type text = Text;
+pub type word = Word;
 
 #[doc(hidden)]
 pub fn unpack<MC: Component>(mut stack: Stack<MC>) -> Node<MC> {
