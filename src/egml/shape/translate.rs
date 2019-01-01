@@ -12,6 +12,12 @@ impl From<(Real, Real)> for Translate {
     }
 }
 
+impl From<(i32, i32)> for Translate {
+    fn from((x, y): (i32, i32)) -> Self {
+        Translate { x: RealValue::px(x as Real), y: RealValue::px(y as Real) }
+    }
+}
+
 impl From<(Pct, Real)> for Translate {
     fn from((Pct(x), y): (Pct, Real)) -> Self {
         Translate { x: RealValue::pct(x), y: RealValue::px(y) }
@@ -31,6 +37,12 @@ impl From<(Pct, Pct)> for Translate {
 }
 
 impl Converter<Option<Translate>> for (Real, Real) {
+    fn convert(self) -> Option<Translate> {
+        Some(self.into())
+    }
+}
+
+impl Converter<Option<Translate>> for (i32, i32) {
     fn convert(self) -> Option<Translate> {
         Some(self.into())
     }
