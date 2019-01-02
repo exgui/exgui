@@ -2,7 +2,7 @@ use std::fmt::Debug;
 use crate::egml::Converter;
 
 #[derive(Debug, Default, Clone, Copy)]
-pub struct Pct(pub Real);
+pub struct Pct<T>(pub T);
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueType {
@@ -77,9 +77,15 @@ impl From<i32> for RealValue {
     }
 }
 
-impl From<Pct> for RealValue {
-    fn from(v: Pct) -> Self {
+impl From<Pct<Real>> for RealValue {
+    fn from(v: Pct<Real>) -> Self {
         RealValue::pct(v.0)
+    }
+}
+
+impl From<Pct<i32>> for RealValue {
+    fn from(v: Pct<i32>) -> Self {
+        RealValue::pct(v.0 as Real)
     }
 }
 
@@ -119,13 +125,25 @@ impl Converter<Option<RealValue>> for i32 {
     }
 }
 
-impl Converter<RealValue> for Pct {
+impl Converter<RealValue> for Pct<Real> {
     fn convert(self) -> RealValue {
         self.into()
     }
 }
 
-impl Converter<Option<RealValue>> for Pct {
+impl Converter<Option<RealValue>> for Pct<Real> {
+    fn convert(self) -> Option<RealValue> {
+        Some(self.into())
+    }
+}
+
+impl Converter<RealValue> for Pct<i32> {
+    fn convert(self) -> RealValue {
+        self.into()
+    }
+}
+
+impl Converter<Option<RealValue>> for Pct<i32> {
     fn convert(self) -> Option<RealValue> {
         Some(self.into())
     }
