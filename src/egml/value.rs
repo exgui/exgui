@@ -1,8 +1,78 @@
 use std::fmt::Debug;
+use std::ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign};
 use crate::egml::Converter;
 
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialOrd, PartialEq)]
 pub struct Pct<T>(pub T);
+
+impl<T: Add> Add for Pct<T> {
+    type Output = Pct<T::Output>;
+
+    fn add(self, other: Self) -> Self::Output {
+        Pct(self.0 + other.0)
+    }
+}
+
+impl<T: AddAssign> AddAssign for Pct<T> {
+    fn add_assign(&mut self, other: Self) {
+        self.0 += other.0;
+    }
+}
+
+impl<T: Sub> Sub for Pct<T> {
+    type Output = Pct<T::Output>;
+
+    fn sub(self, other: Self) -> Self::Output {
+        Pct(self.0 - other.0)
+    }
+}
+
+impl<T: SubAssign> SubAssign for Pct<T> {
+    fn sub_assign(&mut self, other: Self) {
+        self.0 -= other.0;
+    }
+}
+
+impl<T: Mul> Mul for Pct<T> {
+    type Output = Pct<T::Output>;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        Pct(self.0 * rhs.0)
+    }
+}
+
+impl<T: MulAssign> MulAssign for Pct<T> {
+    fn mul_assign(&mut self, rhs: Self) {
+        self.0 *= rhs.0;
+    }
+}
+
+impl<T: Div> Div for Pct<T> {
+    type Output = Pct<T::Output>;
+
+    fn div(self, rhs: Self) -> Self::Output {
+        Pct(self.0 / rhs.0)
+    }
+}
+
+impl<T: DivAssign> DivAssign for Pct<T> {
+    fn div_assign(&mut self, rhs: Self) {
+        self.0 /= rhs.0;
+    }
+}
+
+impl<T> From<T> for Pct<T> {
+    fn from(v: T) -> Self {
+        Pct(v)
+    }
+}
+
+impl From<i32> for Pct<Real> {
+    fn from(v: i32) -> Self {
+        Pct(v as Real)
+    }
+}
+
 
 #[derive(Debug, Clone, Copy)]
 pub enum ValueType {
