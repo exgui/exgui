@@ -61,6 +61,12 @@ impl From<Color> for Paint {
     }
 }
 
+impl From<(Color, f32)> for Paint {
+    fn from((color, alpha): (Color, f32)) -> Self {
+        Paint::Color(color.with_alpha(alpha))
+    }
+}
+
 /// Gradient paint used to fill or stroke paths with gradient.
 #[derive(Copy, Clone, Debug)]
 pub enum Gradient {
