@@ -1,5 +1,5 @@
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Paint {
     Color(Color),
     Gradient(Gradient),
@@ -11,7 +11,7 @@ impl Default for Paint {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Color {
     Red,
     Green,
@@ -68,7 +68,7 @@ impl From<(Color, f32)> for Paint {
 }
 
 /// Gradient paint used to fill or stroke paths with gradient.
-#[derive(Copy, Clone, Debug)]
+#[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Gradient {
     Linear {
         start: (f32, f32),
