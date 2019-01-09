@@ -22,8 +22,20 @@ impl<'a, T: Clone> Converter<T> for &'a T {
     }
 }
 
+impl<'a, T: Clone> Converter<Option<T>> for &'a T {
+    fn convert(self) -> Option<T> {
+        Some(self.clone())
+    }
+}
+
 impl<'a> Converter<String> for &'a str {
     fn convert(self) -> String {
         self.to_owned()
+    }
+}
+
+impl<'a> Converter<Option<String>> for &'a str {
+    fn convert(self) -> Option<String> {
+        Some(self.to_owned())
     }
 }
