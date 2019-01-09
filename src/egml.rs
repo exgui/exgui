@@ -105,6 +105,32 @@ impl<M: ViewableComponent<M>> Node<M> {
             }
         }
     }
+
+    #[inline]
+    pub fn send_self(&mut self, model: &mut M, msg: M::Message) {
+        self.send_self_batch(model, Some(msg));
+    }
+
+    pub fn send_self_batch<MS>(&mut self, model: &mut M, msgs: MS)
+        where
+            MS: IntoIterator<Item = M::Message>,
+    {
+        let mut should_change = ChangeView::None;
+        for msg in msgs.into_iter() {
+            should_change.up(model.update(msg));
+        }
+        match should_change {
+            ChangeView::Rebuild => {
+                let mut new_node = model.view();
+                new_node.resolve(None);
+                *self = new_node;
+            },
+            ChangeView::Modify => {
+                self.modify(model);
+            },
+            ChangeView::None => (),
+        }
+    }
 }
 
 impl<M: Component> Drawable for Node<M> {
