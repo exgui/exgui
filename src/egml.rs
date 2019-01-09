@@ -32,17 +32,49 @@ pub struct NodeDefaults {
 }
 
 impl<M: Component> Node<M> {
-    pub fn input(&mut self, event: InputEvent, model: &mut M) -> ChangeView {
+    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent, messages: &mut Vec<M::Message>) {
         match self {
-            Node::Unit(ref mut unit) => unit.input(event, model),
-            Node::Comp(ref mut comp) => comp.input(event),
+            Node::Unit(ref mut unit) => unit.input(parent_comp, event, messages),
+            Node::Comp(ref mut comp) => comp.input(parent_comp, event),
+        }
+    }
+
+    pub fn unit(&self) -> Option<&Unit<M>> {
+        if let Node::Unit(ref unit) = self {
+            Some(unit)
+        } else {
+            None
+        }
+    }
+
+    pub fn unit_mut(&mut self) -> Option<&mut Unit<M>> {
+        if let Node::Unit(ref mut unit) = self {
+            Some(unit)
+        } else {
+            None
+        }
+    }
+
+    pub fn comp(&self) -> Option<&Comp> {
+        if let Node::Comp(ref comp) = self {
+            Some(comp)
+        } else {
+            None
+        }
+    }
+
+    pub fn comp_mut(&mut self) -> Option<&mut Comp> {
+        if let Node::Comp(ref mut comp) = self {
+            Some(comp)
+        } else {
+            None
         }
     }
 }
 
 pub type ChildrenProcessed = bool;
 
-impl<M: Component + Viewable<M>> Node<M> {
+impl<M: ViewableComponent<M>> Node<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self {
             Node::Unit(ref mut unit) => {
@@ -176,7 +208,7 @@ pub type ShouldChangeView = bool;
 /// An interface of a UI-component. Uses `self` as a model.
 pub trait Component: Sized + 'static {
     /// Control message type which `update` loop get.
-    type Message: 'static;
+    type Message: Clone + 'static;
 
     /// Properties type of component implementation.
     /// It sould be serializable because it's sent to dynamicaly created
@@ -190,6 +222,14 @@ pub trait Component: Sized + 'static {
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
     fn update(&mut self, msg: Self::Message) -> ChangeView;
+
+    fn before_child_update(&mut self, _msg: Self::Message) -> ChangeView {
+        ChangeView::None
+    }
+
+    fn after_child_update(&mut self, msg: Self::Message) -> ChangeView {
+        self.update(msg)
+    }
 
     /// This method called when properties changes, and once when component created.
     fn change(&mut self, _: Self::Properties) -> ChangeView {
@@ -205,6 +245,9 @@ pub trait Viewable<M: Component> {
     /// Called by rendering loop.
     fn view(&self) -> Node<M>;
 }
+
+pub trait ViewableComponent<M: Component>: Component + Viewable<M> {}
+impl<T: Component + Viewable<T>> ViewableComponent<T> for T {}
 
 pub type DrawableChilds<'a> = Box<dyn Iterator<Item=&'a dyn Drawable> + 'a>;
 pub type DrawableChildsMut<'a> = Box<dyn Iterator<Item=&'a mut dyn Drawable> + 'a>;

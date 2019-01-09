@@ -2,41 +2,21 @@ use std::mem;
 use std::any::Any;
 use std::rc::Rc;
 use crate::egml::{
-    Component, ChangeView, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
-    Node, NodeDefaults, Shape, ChildrenProcessed,
+    Component, ChangeView, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
+    Node, NodeDefaults, Unit, Shape, ChildrenProcessed,
 };
 use crate::controller::InputEvent;
 
-trait AsAny {
-    fn as_any(&self) -> &dyn Any;
-
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
-    fn downcast_ref<U: 'static>(&self) -> Option<&U>;
-
-    fn downcast_mut<U: 'static>(&mut self) -> Option<&mut U>;
-}
-
-impl<T: 'static> AsAny for T {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
-    fn downcast_ref<U: 'static>(&self) -> Option<&U> {
-        self.as_any().downcast_ref::<U>()
-    }
-
-    fn downcast_mut<U: 'static>(&mut self) -> Option<&mut U> {
-        self.as_any_mut().downcast_mut::<U>()
-    }
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum Finger<'a> {
+    Id(&'a str),
+    Location(&'a [usize]),
+    None,
 }
 
 #[derive(Default)]
 pub struct Comp {
+    pub id: Option<String>,
     pub model: Option<Box<dyn Any>>,
     pub props: Option<Box<dyn Any>>,
     pub view_node: Option<Box<dyn Any>>,
@@ -44,81 +24,76 @@ pub struct Comp {
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
-    pub inputer: Option<fn(&mut Comp, InputEvent) -> ChangeView>,
+    pub inputer: Option<fn(*mut Comp, &mut Comp, InputEvent)>,
     pub modify_handler: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn Any)>,
+    pub pass_up_handler: Option<fn(&dyn Any) -> Box<dyn Any>>,
 }
 
 impl Comp {
     /// This method prepares a generator to make a new instance of the `Component`.
-    pub fn lazy<MYM>() -> (<MYM as Component>::Properties, Self)
+    pub fn lazy<M>() -> (M::Properties, Self)
         where
-            MYM: Component + Viewable<MYM>,
+            M: ViewableComponent<M>,
     {
         (Default::default(), Default::default())
     }
 
-    pub fn new<MYM>(props: <MYM as Component>::Properties) -> Self
+    pub fn new<M>(props: M::Properties) -> Self
         where
-            MYM: Component + Viewable<MYM>,
+            M: ViewableComponent<M>,
     {
         let mut comp = Comp::default();
-        comp.init::<MYM>(props);
+        comp.init::<M>(props);
         comp
     }
 
     /// Create model and attach properties associated with the component.
-    pub fn init<MYM>(&mut self, props: <MYM as Component>::Properties)
+    pub fn init<M>(&mut self, props: M::Properties)
         where
-            MYM: Component + Viewable<MYM>,
+            M: ViewableComponent<M>,
     {
-        let model = <MYM as Component>::create(&props);
+        let model = <M as Component>::create(&props);
         let node = model.view();
         self.model = Some(Box::new(model));
         self.view_node = Some(Box::new(node));
         self.props = Some(Box::new(props));
         self.resolver = Some(|comp: &mut Comp| {
             let defaults = comp.cloned_defaults();
-            comp.view_node_mut::<MYM>().resolve(defaults)
+            comp.view_node_mut::<M>().resolve(defaults)
         });
         self.drawer = Some(|comp: &Comp| {
-            comp.view_node::<MYM>() as &dyn Drawable
+            comp.view_node::<M>() as &dyn Drawable
         });
         self.drawer_mut = Some(|comp: &mut Comp| {
-            comp.view_node_mut::<MYM>() as &mut dyn Drawable
-        });
-        self.inputer = Some(|comp: &mut Comp, event: InputEvent| {
-            let mut view_node = mem::replace(&mut comp.view_node, None)
-                .expect("Inputer can't extract node");
-            {
-                let defaults = comp.cloned_defaults();
-                let model = comp.model_mut::<MYM>();
-                let should_change = (*view_node)
-                    .downcast_mut::<Node<MYM>>().expect("Inputer can't downcast node")
-                    .input(event, model);
-
-                match should_change {
-                    ChangeView::Rebuild => {
-                        let mut new_node = model.view();
-                        new_node.resolve(defaults);
-                        view_node = Box::new(new_node);
-                    },
-                    ChangeView::Modify => {
-                        (*view_node)
-                            .downcast_mut::<Node<MYM>>().expect("Inputer can't downcast node")
-                            .modify(model);
-                    },
-                    ChangeView::None => (),
-                }
-            }
-            mem::replace(&mut comp.view_node, Some(view_node));
-            ChangeView::None
+            comp.view_node_mut::<M>() as &mut dyn Drawable
         });
         self.modify_handler = Some(|comp: &mut Comp| {
             let boxed_model = mem::replace(&mut comp.model, None)
                 .expect("Modifier can't extract model");
-            comp.view_node_mut::<MYM>().modify(&(*boxed_model));
+            comp.view_node_mut::<M>().modify(&(*boxed_model));
             mem::replace(&mut comp.model, Some(boxed_model));
+        });
+        self.inputer = Some(|_parent_comp: *mut Comp, comp: &mut Comp, event: InputEvent| {
+            let mut messages = Vec::new();
+            let comp_ptr = comp as *mut Comp;
+            comp.view_node_mut::<M>()
+                .input(Some(comp_ptr), event, &mut messages);
+            comp.update_msgs::<M, _>(messages);
+        });
+    }
+
+    pub fn init_viewable<PM, M>(&mut self)
+        where
+            PM: ViewableComponent<PM>,
+            M: ViewableComponent<M>,
+    {
+        self.inputer = Some(|parent_comp: *mut Comp, comp: &mut Comp, event: InputEvent| {
+            let mut messages = Vec::new();
+            let comp_ptr = comp as *mut Comp;
+            comp.view_node_mut::<M>()
+                .input(Some(comp_ptr), event, &mut messages);
+            Self::send_pass_up::<PM, M, _>(parent_comp, comp, messages);
         });
     }
 
@@ -149,29 +124,14 @@ impl Comp {
         (*(*model)).downcast_mut::<M>().expect("Can't downcast model")
     }
 
-    pub fn input(&mut self, event: InputEvent) -> ChangeView {
+    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent) {
         self.inputer.map(|inputer| {
-            inputer(self, event)
-        }).unwrap_or(ChangeView::None)
+            inputer(parent_comp.unwrap_or(self as *mut Comp), self, event)
+        });
     }
 
     pub fn cloned_defaults(&self) -> Option<Rc<NodeDefaults>> {
         self.defaults.as_ref().map(|d| Rc::clone(d))
-    }
-
-    pub fn send<M: Component + Viewable<M>>(&mut self, msg: M::Message) {
-        let should_change = self.model_mut::<M>().update(msg);
-        match should_change {
-            ChangeView::Rebuild => {
-                let mut new_node = self.model::<M> ().view();
-                new_node.resolve(self.cloned_defaults());
-                self.view_node = Some(Box::new(new_node));
-            },
-            ChangeView::Modify => {
-                self.modify_internal();
-            },
-            ChangeView::None => (),
-        }
     }
 
     pub fn modify(&mut self, model: Option<&dyn Any>) {
@@ -185,6 +145,142 @@ impl Comp {
         self.modify_handler.map(|modifier| {
             modifier(self)
         });
+    }
+
+    pub fn pass_up<M: Component>(&mut self, msg: &dyn Any) -> Option<M::Message> {
+        self.pass_up_handler.map(|pass_up_handler| {
+            *pass_up_handler(msg).downcast::<M::Message>()
+                .expect("Can't downcast pass up msg")
+        })
+    }
+
+    #[inline]
+    pub fn send_self<M: ViewableComponent<M>>(&mut self, msg: M::Message) {
+        self.send_self_batch::<M, _>(Some(msg));
+    }
+
+    pub fn send_self_batch<M, MS>(&mut self, msgs: MS)
+        where
+            M: ViewableComponent<M>,
+            MS: IntoIterator<Item = M::Message>,
+    {
+        let mut should_change = ChangeView::None;
+        for msg in msgs.into_iter() {
+            should_change.up(self.model_mut::<M>().update(msg));
+        }
+        self.change_if_necessary::<M>(should_change);
+    }
+
+    #[inline]
+    pub fn send<M, CM>(&mut self, to_child: Finger, msg: CM::Message)
+        where
+            M: ViewableComponent<M>,
+            CM: ViewableComponent<CM>,
+    {
+        self.send_batch::<M, CM, _>(to_child, Some(msg))
+    }
+
+    pub fn send_batch<M, CM, MS>(&mut self, to_child: Finger, msgs: MS)
+        where
+            M: ViewableComponent<M>,
+            CM: ViewableComponent<CM>,
+            MS: IntoIterator<Item = CM::Message>,
+    {
+        match to_child {
+            Finger::None | Finger::Location(&[]) => {
+                self.update_msgs::<CM, _>(msgs);
+            },
+            Finger::Location(loc) => {
+                let this = self as *mut Self;
+                match self.view_node_mut::<M>() {
+                    Node::Unit(unit) => Self::send_unit::<M, CM, MS>(this, unit, Finger::Location(loc), msgs),
+                    Node::Comp(_) => panic!("Wrong location tail: {:?}, link to Comp instead Unit", loc),
+                }
+            },
+            Finger::Id(id) => (),
+        }
+    }
+
+    fn send_unit<M, CM, MS>(this: *mut Self, unit: &mut Unit<M>, to_child: Finger, msgs: MS)
+        where
+            M: ViewableComponent<M>,
+            CM: ViewableComponent<CM>,
+            MS: IntoIterator<Item = CM::Message>,
+    {
+        match to_child {
+            Finger::None | Finger::Location(&[]) => {
+                panic!("Wrong location, link to Unit instead Comp");
+            },
+            Finger::Location(loc) => {
+                let idx = loc[0];
+                let len = unit.childs.len();
+                match unit.childs.get_mut(idx) {
+                    Some(Node::Unit(ref mut unit)) => {
+                        Self::send_unit::<M, CM, MS>(this, unit, Finger::Location(&loc[1..]), msgs)
+                    },
+                    Some(Node::Comp(ref mut comp)) => {
+                        if len == 1 {
+                            Self::send_pass_up::<M, CM, MS>(this, comp, msgs);
+                        } else {
+                            comp.send_batch::<M, CM, MS>(Finger::Location(&loc[1..]), msgs);
+                        }
+                    },
+                    None => panic!("Wrong location tail: {:?}, idx {} out of bounds {}", loc, idx, len),
+                }
+            },
+            Finger::Id(id) => (),
+        }
+    }
+
+    fn send_pass_up<M, CM, MS>(parent_comp: *mut Comp, comp: &mut Comp, msgs: MS)
+        where
+            M: ViewableComponent<M>,
+            CM: ViewableComponent<CM>,
+            MS: IntoIterator<Item = CM::Message>,
+    {
+        let parent_comp = unsafe {&mut *parent_comp};
+        for msg in msgs.into_iter() {
+            let parent_msg = comp.pass_up::<M>(&msg);
+            parent_msg.as_ref().map(|parent_msg| {
+                let should_change = parent_comp
+                    .model_mut::<M>()
+                    .before_child_update(parent_msg.clone());
+                parent_comp.change_if_necessary::<M>(should_change);
+            });
+            comp.send_self::<CM>(msg);
+            if let Some(parent_msg) = parent_msg {
+                let should_change = parent_comp
+                    .model_mut::<M>()
+                    .after_child_update(parent_msg);
+                parent_comp.change_if_necessary::<M>(should_change);
+            }
+        }
+    }
+
+    fn update_msgs<M, MS>(&mut self, msgs: MS)
+        where
+            M: ViewableComponent<M>,
+            MS: IntoIterator<Item = M::Message>,
+    {
+        let mut should_change = ChangeView::None;
+        for msg in msgs.into_iter() {
+            should_change.up(self.model_mut::<M>().update(msg));
+        }
+        self.change_if_necessary::<M>(should_change);
+    }
+
+    fn change_if_necessary<M: ViewableComponent<M>>(&mut self, should_change: ChangeView) {
+        match should_change {
+            ChangeView::Rebuild => {
+                let mut new_node = self.model::<M>().view();
+                new_node.resolve(self.cloned_defaults());
+                self.view_node = Some(Box::new(new_node));
+            },
+            ChangeView::Modify => {
+                self.modify_internal();
+            },
+            ChangeView::None => (),
+        }
     }
 }
 
@@ -237,11 +333,29 @@ impl<'a, M, T> Transformer<M, &'a T, T> for Comp
     }
 }
 
+impl<M, T> Transformer<M, T, Option<T>> for Comp
+    where
+        M: Component,
+{
+    fn transform(&mut self, from: T) -> Option<T> {
+        Some(from)
+    }
+}
+
 impl<'a, M> Transformer<M, &'a str, String> for Comp
     where
         M: Component,
 {
     fn transform(&mut self, from: &'a str) -> String {
         from.to_owned()
+    }
+}
+
+impl<'a, M> Transformer<M, &'a str, Option<String>> for Comp
+    where
+        M: Component,
+{
+    fn transform(&mut self, from: &'a str) -> Option<String> {
+        Some(from.to_owned())
     }
 }

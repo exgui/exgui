@@ -1,4 +1,4 @@
-use crate::egml::{Component, Node, Comp, ChangeView};
+use crate::egml::Comp;
 use super::InputEvent;
 
 pub struct MouseInput {
@@ -6,7 +6,7 @@ pub struct MouseInput {
     last_offset: Option<(f64, f64)>,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct MousePos {
     pub x: f32,
     pub y: f32,
@@ -41,13 +41,8 @@ impl MouseInput {
         }
     }
 
-    pub fn left_pressed<M: Component>(&self, model: &mut M, node: &mut Node<M>) -> ChangeView {
+    pub fn left_pressed_comp(&self, comp: &mut Comp) {
         let pos = self.last_pos();
-        node.input(InputEvent::MousePress(pos), model)
-    }
-
-    pub fn left_pressed_comp(&self, comp: &mut Comp) -> ChangeView {
-        let pos = self.last_pos();
-        comp.input(InputEvent::MousePress(pos))
+        comp.input(None, InputEvent::MousePress(pos))
     }
 }

@@ -2,8 +2,8 @@ use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 use crate::egml::{
-    Component, ChangeView, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
-    Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
+    Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
+    Node, NodeDefaults, Comp, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
 use crate::controller::{InputEvent, MousePos};
@@ -45,28 +45,25 @@ impl<M: Component> Unit<M> {
         self.listeners.push(listener);
     }
 
-    pub fn input(&mut self, event: InputEvent, model: &mut M) -> ChangeView {
+    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent, messages: &mut Vec<M::Message>) {
         match event {
             InputEvent::MousePress(pos) => {
-                self.mouse_press(pos, model)
+                self.mouse_press(parent_comp, pos, messages)
             }
         }
     }
 
-    pub fn mouse_press(&mut self, pos: MousePos, model: &mut M) -> ChangeView {
-        let mut should_change = ChangeView::None;
-
+    pub fn mouse_press(&mut self, parent_comp: Option<*mut Comp>, pos: MousePos, messages: &mut Vec<M::Message>) {
         if self.intersect(pos.x, pos.y) {
             for listener in self.listeners.iter() {
                 if let Some(msg) = listener.handle(Event::Click(ClickEvent)) {
-                    should_change.up(model.update(msg));
+                    messages.push(msg);
                 }
             }
         }
         for child in self.childs.iter_mut() {
-            should_change.up(child.input(InputEvent::MousePress(pos), model));
+            child.input(parent_comp, InputEvent::MousePress(pos), messages);
         }
-        should_change
     }
 
     pub fn modify(&mut self, model: &dyn Any) {
