@@ -4,6 +4,7 @@ use super::{Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Rect {
+    pub id: Option<String>,
     pub x: RealValue,
     pub y: RealValue,
     pub width: RealValue,
@@ -15,6 +16,10 @@ pub struct Rect {
 }
 
 impl Rect {
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
     #[inline]
     pub fn intersect(&self, x: Real, y: Real) -> bool {
         // TODO: check all transform

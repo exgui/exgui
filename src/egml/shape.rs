@@ -35,6 +35,17 @@ pub struct ShapeRef<'a>(pub &'a Shape);
 pub struct ShapeRefMut<'a>(pub &'a mut Shape);
 
 impl Shape {
+    pub fn id(&self) -> Option<&str> {
+        match self {
+            Shape::Rect(r) => r.id(),
+            Shape::Circle(c) => c.id(),
+            Shape::Path(p) => p.id(),
+            Shape::Group(g) => g.id(),
+            Shape::Text(t) => t.id(),
+            Shape::Word(w) => w.id(),
+        }
+    }
+
     pub fn as_ref(&self) -> ShapeRef {
         ShapeRef(self)
     }

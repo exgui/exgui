@@ -3,6 +3,7 @@ use crate::egml::{Real, RealValue, Converter, Fill, Stroke, Transform};
 
 #[derive(Default, Clone)]
 pub struct Text {
+    pub id: Option<String>,
     pub x: RealValue,
     pub y: RealValue,
     pub font_name: String,
@@ -15,6 +16,10 @@ pub struct Text {
 }
 
 impl Text {
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
     #[inline]
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {
         // TODO: calvulate intersect

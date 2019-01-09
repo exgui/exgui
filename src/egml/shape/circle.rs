@@ -4,6 +4,7 @@ use super::{Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Circle {
+    pub id: Option<String>,
     pub cx: RealValue,
     pub cy: RealValue,
     pub r: RealValue,
@@ -14,6 +15,10 @@ pub struct Circle {
 }
 
 impl Circle {
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
     #[inline]
     pub fn intersect(&self, x: Real, y: Real) -> bool {
         // TODO: check all transform

@@ -4,6 +4,7 @@ use super::{Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Path {
+    pub id: Option<String>,
     pub cmd: Vec<PathCommand>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
@@ -12,6 +13,10 @@ pub struct Path {
 }
 
 impl Path {
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {
         false // TODO: need impl
     }
