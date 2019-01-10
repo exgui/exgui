@@ -241,13 +241,15 @@ impl Comp {
         let parent_comp = unsafe {&mut *parent_comp};
         for msg in msgs.into_iter() {
             let parent_msg = comp.pass_up::<M>(&msg);
-            parent_msg.as_ref().map(|parent_msg| {
-                let should_change = parent_comp
+            let should_change = parent_msg.as_ref().map(|parent_msg| {
+                parent_comp
                     .model_mut::<M>()
-                    .before_child_update(parent_msg.clone());
-                parent_comp.change_if_necessary::<M>(should_change);
+                    .before_child_update(parent_msg.clone())
             });
             comp.send_self::<CM>(msg);
+            if let Some(should_change) = should_change {
+                parent_comp.change_if_necessary::<M>(should_change);
+            }
             if let Some(parent_msg) = parent_msg {
                 let should_change = parent_comp
                     .model_mut::<M>()
