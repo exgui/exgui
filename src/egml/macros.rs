@@ -480,15 +480,15 @@ mod tests {
         type Message = Msg;
         type Properties = ();
 
-        fn update(&mut self, msg: Self::Message) -> ChangeView {
-            match msg {
-                Msg::InnerToggle(_) => ChangeView::None,
-            }
-        }
-
         fn create(_props: &Self::Properties) -> Self {
             Model {
                 val: 0.0,
+            }
+        }
+
+        fn update(&mut self, msg: Self::Message) -> ChangeView {
+            match msg {
+                Msg::InnerToggle(_) => ChangeView::None,
             }
         }
     }

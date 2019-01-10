@@ -232,28 +232,20 @@ impl Comp {
         }
     }
 
-    fn send_pass_up<M, CM, MS>(parent_comp: *mut Comp, comp: &mut Comp, msgs: MS)
+    fn send_pass_up<M, CM, CMS>(parent_comp: *mut Comp, comp: &mut Comp, msgs: CMS)
         where
             M: ViewableComponent<M>,
             CM: ViewableComponent<CM>,
-            MS: IntoIterator<Item = CM::Message>,
+            CMS: IntoIterator<Item = CM::Message>,
     {
         let parent_comp = unsafe {&mut *parent_comp};
         for msg in msgs.into_iter() {
             let parent_msg = comp.pass_up::<M>(&msg);
-            let should_change = parent_msg.as_ref().map(|parent_msg| {
-                parent_comp
-                    .model_mut::<M>()
-                    .before_child_update(parent_msg.clone())
-            });
             comp.send_self::<CM>(msg);
-            if let Some(should_change) = should_change {
-                parent_comp.change_if_necessary::<M>(should_change);
-            }
             if let Some(parent_msg) = parent_msg {
                 let should_change = parent_comp
                     .model_mut::<M>()
-                    .after_child_update(parent_msg);
+                    .update(parent_msg);
                 parent_comp.change_if_necessary::<M>(should_change);
             }
         }

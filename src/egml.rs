@@ -66,14 +66,6 @@ pub trait Component: Sized + 'static {
     /// reference to a context.
     fn update(&mut self, msg: Self::Message) -> ChangeView;
 
-    fn before_child_update(&mut self, _msg: Self::Message) -> ChangeView {
-        ChangeView::None
-    }
-
-    fn after_child_update(&mut self, msg: Self::Message) -> ChangeView {
-        self.update(msg)
-    }
-
     /// This method called when properties changes, and once when component created.
     fn change(&mut self, _: Self::Properties) -> ChangeView {
         unimplemented!("you should implement `change` method for a component with properties")
