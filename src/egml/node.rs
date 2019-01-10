@@ -3,12 +3,12 @@ use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use crate::egml::{
     Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
-    Unit, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
+    Prim, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
 };
 use crate::controller::InputEvent;
 
 pub enum Node<M: Component> {
-    Unit(Unit<M>),
+    Prim(Prim<M>),
     Comp(Comp),
 //    List(List),
 }
@@ -23,22 +23,22 @@ pub struct NodeDefaults {
 impl<M: Component> Node<M> {
     pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent, messages: &mut Vec<M::Message>) {
         match self {
-            Node::Unit(ref mut unit) => unit.input(parent_comp, event, messages),
+            Node::Prim(ref mut prim) => prim.input(parent_comp, event, messages),
             Node::Comp(ref mut comp) => comp.input(parent_comp, event),
         }
     }
 
-    pub fn unit(&self) -> Option<&Unit<M>> {
-        if let Node::Unit(ref unit) = self {
-            Some(unit)
+    pub fn prim(&self) -> Option<&Prim<M>> {
+        if let Node::Prim(ref prim) = self {
+            Some(prim)
         } else {
             None
         }
     }
 
-    pub fn unit_mut(&mut self) -> Option<&mut Unit<M>> {
-        if let Node::Unit(ref mut unit) = self {
-            Some(unit)
+    pub fn prim_mut(&mut self) -> Option<&mut Prim<M>> {
+        if let Node::Prim(ref mut prim) = self {
+            Some(prim)
         } else {
             None
         }
@@ -66,9 +66,9 @@ pub type ChildrenProcessed = bool;
 impl<M: ViewableComponent<M>> Node<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self {
-            Node::Unit(ref mut unit) => {
-                if !unit.resolve(defaults.as_ref().map(|d| Rc::clone(d))) {
-                    for child in unit.childs.iter_mut() {
+            Node::Prim(ref mut prim) => {
+                if !prim.resolve(defaults.as_ref().map(|d| Rc::clone(d))) {
+                    for child in prim.childs.iter_mut() {
                         child.resolve(defaults.as_ref().map(|d| Rc::clone(d)));
                     }
                 }
@@ -83,9 +83,9 @@ impl<M: ViewableComponent<M>> Node<M> {
 
     pub fn modify(&mut self, model: &dyn Any) {
         match self {
-            Node::Unit(ref mut unit) => {
-                unit.modify(model);
-                for child in unit.childs.iter_mut() {
+            Node::Prim(ref mut prim) => {
+                prim.modify(model);
+                for child in prim.childs.iter_mut() {
                     child.modify(model);
                 }
             }
@@ -125,36 +125,36 @@ impl<M: ViewableComponent<M>> Node<M> {
 impl<M: Component> Drawable for Node<M> {
     fn shape(&self) -> Option<&Shape> {
         match self {
-            Node::Unit(ref unit) => unit.shape(),
+            Node::Prim(ref prim) => prim.shape(),
             Node::Comp(ref comp) => comp.shape(),
         }
     }
 
     fn shape_mut(&mut self) -> Option<&mut Shape> {
         match self {
-            Node::Unit(ref mut unit) => unit.shape_mut(),
+            Node::Prim(ref mut prim) => prim.shape_mut(),
             Node::Comp(ref mut comp) => comp.shape_mut(),
         }
     }
 
     fn childs(&self) -> Option<DrawableChilds> {
         match self {
-            Node::Unit(ref unit) => Drawable::childs(unit),
+            Node::Prim(ref prim) => Drawable::childs(prim),
             Node::Comp(ref comp) => Drawable::childs(comp),
         }
     }
 
     fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
         match self {
-            Node::Unit(ref mut unit) => Drawable::childs_mut(unit),
+            Node::Prim(ref mut prim) => Drawable::childs_mut(prim),
             Node::Comp(ref mut comp) => Drawable::childs_mut(comp),
         }
     }
 }
 
-impl<M: Component> From<Unit<M>> for Node<M> {
-    fn from(unit: Unit<M>) -> Self {
-        Node::Unit(unit)
+impl<M: Component> From<Prim<M>> for Node<M> {
+    fn from(prim: Prim<M>) -> Self {
+        Node::Prim(prim)
     }
 }
 
@@ -166,7 +166,7 @@ impl<M: Component> From<Comp> for Node<M> {
 
 impl<M: Component, T: ToString> From<T> for Node<M> {
     fn from(value: T) -> Self {
-        Node::Unit(Unit::new("text", Shape::Word(
+        Node::Prim(Prim::new("text", Shape::Word(
             Word { content: value.to_string(), ..Default::default() }
         )))
     }
@@ -181,7 +181,7 @@ impl<'a, M: Component> From<&'a dyn Viewable<M>> for Node<M> {
 impl<M: Component> fmt::Debug for Node<M> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Node::Unit(ref unit) => unit.fmt(f),
+            Node::Prim(ref prim) => prim.fmt(f),
             Node::Comp(ref _comp) => "Component<>".fmt(f),
 //            Node::List(_) => "List<>".fmt(f),
 //            Node::Text(ref text) => text.fmt(f),

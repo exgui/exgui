@@ -8,7 +8,7 @@ use crate::egml::{
 };
 use crate::controller::{InputEvent, MousePos};
 
-pub struct Unit<M: Component> {
+pub struct Prim<M: Component> {
     pub name: Cow<'static, str>,
     pub shape: Shape,
     pub value: Option<String>,
@@ -17,9 +17,9 @@ pub struct Unit<M: Component> {
     pub listeners: Vec<Box<dyn Listener<M>>>,
 }
 
-impl<M: Component> Unit<M> {
+impl<M: Component> Prim<M> {
     pub fn new(name: &'static str, shape: Shape) -> Self {
-        Unit {
+        Prim {
             name: name.into(),
             shape,
             value: None,
@@ -29,7 +29,7 @@ impl<M: Component> Unit<M> {
         }
     }
 
-    /// Returns name of an `Unit`.
+    /// Returns name of an `Prim`.
     pub fn name(&self) -> &str {
         &self.name
     }
@@ -98,7 +98,7 @@ impl<M: Component> Unit<M> {
     }
 }
 
-impl<M: Component + Viewable<M>> Unit<M> {
+impl<M: Component + Viewable<M>> Prim<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self.shape {
             Shape::Rect(ref mut r) => {
@@ -214,7 +214,7 @@ impl<M: Component + Viewable<M>> Unit<M> {
     }
 }
 
-impl<M: Component> Drawable for Unit<M> {
+impl<M: Component> Drawable for Prim<M> {
     fn shape(&self) -> Option<&Shape> {
         Some(&self.shape)
     }

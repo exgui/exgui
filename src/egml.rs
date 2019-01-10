@@ -2,7 +2,7 @@ pub mod macros;
 pub mod value;
 pub mod converter;
 pub mod node;
-pub mod unit;
+pub mod prim;
 pub mod comp;
 pub mod shape;
 pub mod transform;
@@ -10,7 +10,7 @@ pub mod transform;
 pub use self::value::*;
 pub use self::converter::*;
 pub use self::node::*;
-pub use self::unit::*;
+pub use self::prim::*;
 pub use self::comp::*;
 pub use self::shape::*;
 pub use self::transform::*;
@@ -199,25 +199,25 @@ mod tests {
 
     impl Viewable<Model> for Model {
         fn view(&self) -> Node<Self> {
-            let mut rect = Unit::new(
+            let mut rect = Prim::new(
                 "rect",
                 Shape::Rect(
                     Rect { x: 0.into(), y: 0.into(), width: 50.into(), height: 80.into(), ..Default::default() }
                 )
             );
-            let mut group = Unit::new(
+            let mut group = Prim::new(
                 "group",
                 Shape::Group(Group::default())
             );
-            let circle = Unit::new(
+            let circle = Prim::new(
                 "circle",
                 Shape::Circle(
                     Circle { cx: 120.into(), cy: 120.into(), r: 40.into(), ..Default::default() }
                 )
             );
-            group.childs.push(Node::Unit(circle));
-            rect.childs.push(Node::Unit(group));
-            Node::Unit(rect)
+            group.childs.push(Node::Prim(circle));
+            rect.childs.push(Node::Prim(group));
+            Node::Prim(rect)
         }
     }
 
@@ -225,30 +225,30 @@ mod tests {
     fn view() {
         let node = Model.view();
         match node {
-            Node::Unit(unit) => {
-                assert_eq!("rect", unit.name());
-                assert_eq!(1, unit.childs.len());
-                match unit.shape {
+            Node::Prim(prim) => {
+                assert_eq!("rect", prim.name());
+                assert_eq!(1, prim.childs.len());
+                match prim.shape {
                     Shape::Rect(ref rect) => {
                         assert_eq!(0.0, rect.x.val());
                     },
                     _ => (),
                 }
-                for child in unit.childs.iter() {
+                for child in prim.childs.iter() {
                     match child {
-                        Node::Unit(unit) => {
-                            assert_eq!("group", unit.name());
-                            assert_eq!(1, unit.childs.len());
-                            assert!(match unit.shape {
+                        Node::Prim(prim) => {
+                            assert_eq!("group", prim.name());
+                            assert_eq!(1, prim.childs.len());
+                            assert!(match prim.shape {
                                 Shape::Group(_) => true,
                                 _ => false,
                             });
-                            for child in unit.childs.iter() {
+                            for child in prim.childs.iter() {
                                 match child {
-                                    Node::Unit(unit) => {
-                                        assert_eq!("circle", unit.name());
-                                        assert_eq!(0, unit.childs.len());
-                                        match unit.shape {
+                                    Node::Prim(prim) => {
+                                        assert_eq!("circle", prim.name());
+                                        assert_eq!(0, prim.childs.len());
+                                        match prim.shape {
                                             Shape::Circle(ref circle) => {
                                                 assert_eq!(40.0, circle.r.val());
                                             },

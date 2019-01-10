@@ -67,160 +67,160 @@ macro_rules! egml_impl {
         egml_impl! { $state ($($tail)*) }
     };
 
-    // Start of opening unit tag
+    // Start of opening prim tag
     ($state:ident (< $starttag:ident $($tail:tt)*)) => {
-        let unit = $crate::egml::Unit::new(stringify!($starttag), $crate::egml::macros::$starttag::default().into());
-        $state.stack.push(unit.into());
-        egml_impl! { @unit $state $starttag ($($tail)*) }
+        let prim = $crate::egml::Prim::new(stringify!($starttag), $crate::egml::macros::$starttag::default().into());
+        $state.stack.push(prim.into());
+        egml_impl! { @prim $state $starttag ($($tail)*) }
     };
 //    // PATTERN: class=("class-1", "class-2", local_variable),
-//    (@unit $state:ident (class = ($($class:expr),*), $($tail:tt)*)) => {
+//    (@prim $state:ident (class = ($($class:expr),*), $($tail:tt)*)) => {
 //        $( $crate::egml::macros::append_class(&mut $state.stack, $class); )*
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
-//    (@unit $state:ident (class = $class:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (class = $class:expr, $($tail:tt)*)) => {
 //        $crate::macros::set_classes(&mut $state.stack, $class);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
 //    // PATTERN: value="",
-//    (@unit $state:ident (value = $value:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (value = $value:expr, $($tail:tt)*)) => {
 //        $crate::macros::set_value_or_attribute(&mut $state.stack, $value);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
 //    // PATTERN: attribute=value, - workaround for `type` attribute
 //    // because `type` is a keyword in Rust
-//    (@unit $state:ident (type = $kind:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (type = $kind:expr, $($tail:tt)*)) => {
 //        $crate::egml::macros::set_kind(&mut $state.stack, $kind);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
-//    (@unit $state:ident (checked = $kind:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (checked = $kind:expr, $($tail:tt)*)) => {
 //        $crate::egml::macros::set_checked(&mut $state.stack, $kind);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
-//    (@unit $state:ident (disabled = $kind:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (disabled = $kind:expr, $($tail:tt)*)) => {
 //        if $kind {
 //            $crate::egml::macros::add_attribute(&mut $state.stack, "disabled", "true");
 //        }
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
-    (@unit $state:ident $shape:ident (modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
+    (@prim $state:ident $shape:ident (modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
         egml_impl! { $state $shape (false, modifier = |$this, $model:$cm| $handler, $($tail)*) }
-        egml_impl! { @unit $state $shape ($($tail)*) }
+        egml_impl! { @prim $state $shape ($($tail)*) }
     };
     // Events:
-    (@unit $state:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-        egml_impl! { @unit $state $shape ((onclick) = move | $var: $crate::egml::event::ClickEvent | $handler, $($tail)*) }
+    (@prim $state:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+        egml_impl! { @prim $state $shape ((onclick) = move | $var: $crate::egml::event::ClickEvent | $handler, $($tail)*) }
     };
-//    (@unit $state:ident (ondoubleclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondoubleclick) = move | $var: $crate::prelude::DoubleClickEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondoubleclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondoubleclick) = move | $var: $crate::prelude::DoubleClickEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onkeypress = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onkeypress) = move | $var: $crate::prelude::KeyPressEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onkeypress = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onkeypress) = move | $var: $crate::prelude::KeyPressEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onkeydown = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onkeydown) = move | $var: $crate::prelude::KeyDownEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onkeydown = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onkeydown) = move | $var: $crate::prelude::KeyDownEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onkeyup = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onkeyup) = move | $var: $crate::prelude::KeyUpEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onkeyup = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onkeyup) = move | $var: $crate::prelude::KeyUpEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmousedown = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmousedown) = move | $var: $crate::prelude::MouseDownEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmousedown = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmousedown) = move | $var: $crate::prelude::MouseDownEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmousemove = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmousemove) = move | $var: $crate::prelude::MouseMoveEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmousemove = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmousemove) = move | $var: $crate::prelude::MouseMoveEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmouseout = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmouseout) = move | $var: $crate::prelude::MouseOutEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmouseout = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmouseout) = move | $var: $crate::prelude::MouseOutEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmouseenter = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmouseenter) = move | $var: $crate::prelude::MouseEnterEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmouseenter = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmouseenter) = move | $var: $crate::prelude::MouseEnterEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmouseleave = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmouseleave) = move | $var: $crate::prelude::MouseLeaveEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmouseleave = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmouseleave) = move | $var: $crate::prelude::MouseLeaveEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmousewheel = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmousewheel) = move | $var: $crate::prelude::MouseWheelEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmousewheel = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmousewheel) = move | $var: $crate::prelude::MouseWheelEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmouseover = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmouseover) = move | $var: $crate::prelude::MouseOverEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmouseover = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmouseover) = move | $var: $crate::prelude::MouseOverEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onmouseup = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onmouseup) = move | $var: $crate::prelude::MouseUpEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onmouseup = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onmouseup) = move | $var: $crate::prelude::MouseUpEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onscroll = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onscroll) = move | $var: $crate::prelude::ScrollEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onscroll = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onscroll) = move | $var: $crate::prelude::ScrollEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onblur = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onblur) = move | $var: $crate::prelude::BlurEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onblur = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onblur) = move | $var: $crate::prelude::BlurEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onfocus = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onfocus) = move | $var: $crate::prelude::FocusEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onfocus = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onfocus) = move | $var: $crate::prelude::FocusEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onsubmit = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onsubmit) = move | $var: $crate::prelude::SubmitEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (onsubmit = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onsubmit) = move | $var: $crate::prelude::SubmitEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (oninput = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((oninput) = move | $var: $crate::prelude::InputData | $handler, $($tail)*) }
+//    (@prim $state:ident (oninput = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((oninput) = move | $var: $crate::prelude::InputData | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (onchange = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((onchange) = move | $var: $crate::prelude::ChangeData | $handler, $($tail)*) }
+//    (@prim $state:ident (onchange = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((onchange) = move | $var: $crate::prelude::ChangeData | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragstart = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragstart) = move | $var: $crate::prelude::DragStartEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragstart = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragstart) = move | $var: $crate::prelude::DragStartEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondrag = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondrag) = move | $var: $crate::prelude::DragEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondrag = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondrag) = move | $var: $crate::prelude::DragEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragend = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragend) = move | $var: $crate::prelude::DragEndEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragend = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragend) = move | $var: $crate::prelude::DragEndEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragenter = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragenter) = move | $var: $crate::prelude::DragEnterEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragenter = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragenter) = move | $var: $crate::prelude::DragEnterEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragleave = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragleave) = move | $var: $crate::prelude::DragLeaveEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragleave = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragleave) = move | $var: $crate::prelude::DragLeaveEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragover = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragover) = move | $var: $crate::prelude::DragOverEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragover = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragover) = move | $var: $crate::prelude::DragOverEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondragexit = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondragexit) = move | $var: $crate::prelude::DragExitEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondragexit = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondragexit) = move | $var: $crate::prelude::DragExitEvent | $handler, $($tail)*) }
 //    };
-//    (@unit $state:ident (ondrop = | $var:pat | $handler:expr, $($tail:tt)*)) => {
-//        egml_impl! { @unit $state ((ondrop) = move | $var: $crate::prelude::DragDropEvent | $handler, $($tail)*) }
+//    (@prim $state:ident (ondrop = | $var:pat | $handler:expr, $($tail:tt)*)) => {
+//        egml_impl! { @prim $state ((ondrop) = move | $var: $crate::prelude::DragDropEvent | $handler, $($tail)*) }
 //    };
 
     // PATTERN: (action)=expression,
-    (@unit $state:ident $shape:ident (($action:ident) = $handler:expr, $($tail:tt)*)) => {
+    (@prim $state:ident $shape:ident (($action:ident) = $handler:expr, $($tail:tt)*)) => {
         // Catch value to a separate variable for clear error messages
         let handler = $handler;
         let listener = $crate::egml::event::listener::$action(handler);
         $crate::egml::macros::attach_listener(&mut $state.stack, Box::new(listener));
-        egml_impl! { @unit $state $shape ($($tail)*) }
+        egml_impl! { @prim $state $shape ($($tail)*) }
     };
 //    // Attributes:
-//    (@unit $state:ident (href = $href:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident (href = $href:expr, $($tail:tt)*)) => {
 //        let href: $crate::html::Href = $href.into();
 //        $crate::macros::add_attribute(&mut $state.stack, "href", href);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
-    (@unit $state:ident $shape:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
+    (@prim $state:ident $shape:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
         set_attr!($state, $shape.$attr = $crate::egml::Converter::convert($val));
-        egml_impl! { @unit $state $shape ($($tail)*) }
+        egml_impl! { @prim $state $shape ($($tail)*) }
     };
     // End of openging tag
-    (@unit $state:ident $shape:ident (> $($tail:tt)*)) => {
+    (@prim $state:ident $shape:ident (> $($tail:tt)*)) => {
         egml_impl! { $state ($($tail)*) }
     };
     // Self-closing of tag
-    (@unit $state:ident $shape:ident (/ > $($tail:tt)*)) => {
+    (@prim $state:ident $shape:ident (/ > $($tail:tt)*)) => {
         $crate::egml::macros::child_to_parent(&mut $state.stack, None);
         egml_impl! { $state ($($tail)*) }
     };
-//    (@unit $state:ident ($($attr:ident)-+ = $val:expr, $($tail:tt)*)) => {
+//    (@prim $state:ident ($($attr:ident)-+ = $val:expr, $($tail:tt)*)) => {
 //        let attr = vec![$(stringify!($attr).to_string()),+].join("-");
 //        $crate::macros::add_attribute(&mut $state.stack, &attr, $val);
-//        egml_impl! { @unit $state ($($tail)*) }
+//        egml_impl! { @prim $state ($($tail)*) }
 //    };
     // Traditional tag closing
     ($state:ident (< / $endtag:ident > $($tail:tt)*)) => {
@@ -231,11 +231,11 @@ macro_rules! egml_impl {
     // PATTERN: { for expression }
     ($state:ident ({ for $eval:expr } $($tail:tt)*)) => {
         let nodes = $eval;
-        let mut unit = $crate::egml::Unit::new("list group", $crate::egml::Group::default().into());
+        let mut prim = $crate::egml::Prim::new("list group", $crate::egml::Group::default().into());
         for node in nodes {
-            unit.add_child($crate::egml::Node::from(node));
+            prim.add_child($crate::egml::Node::from(node));
         }
-        $crate::egml::macros::add_child(&mut $state.stack, unit.into());
+        $crate::egml::macros::add_child(&mut $state.stack, prim.into());
         egml_impl! { $state ($($tail)*) }
     };
 //    // Support root text nodes: #313
@@ -295,22 +295,22 @@ macro_rules! set_child_attr {
         {
             let last = $state.stack.last_mut()
                 .and_then(|node| if $for_child {
-                    if let &mut Node::Unit(ref mut unit) = node {
-                        unit.childs.last_mut()
+                    if let &mut Node::Prim(ref mut prim) = node {
+                        prim.childs.last_mut()
                     } else {
                         None
                     }
                 } else {
                     Some(node)
                 });
-            if let Some(&mut Node::Unit(ref mut unit)) = last {
-                if let Some(shape) = unit.shape.as_ref_mut().$shape() {
+            if let Some(&mut Node::Prim(ref mut prim)) = last {
+                if let Some(shape) = prim.shape.as_ref_mut().$shape() {
                     shape.$attr = $val;
                 } else {
                     panic!("no shape '{}' to set attribute '{}'", stringify!($shape), stringify!($attr));
                 }
             } else {
-                panic!("no unit to set attribute: {}", stringify!($attr));
+                panic!("no prim to set attribute: {}", stringify!($attr));
             }
         }
     };
@@ -407,24 +407,24 @@ pub fn unpack<MC: Component>(mut stack: Stack<MC>) -> Node<MC> {
 
 #[doc(hidden)]
 pub fn attach_listener<MC: Component>(stack: &mut Stack<MC>, listener: Box<dyn Listener<MC>>) {
-    if let Some(&mut Node::Unit(ref mut unit)) = stack.last_mut() {
-        unit.add_listener(listener);
+    if let Some(&mut Node::Prim(ref mut prim)) = stack.last_mut() {
+        prim.add_listener(listener);
     } else {
-        panic!("no unit to attach listener: {:?}", listener);
+        panic!("no prim to attach listener: {:?}", listener);
     }
 }
 
 #[doc(hidden)]
 pub fn add_child<MC: Component>(stack: &mut Stack<MC>, child: Node<MC>) {
     match stack.last_mut() {
-        Some(&mut Node::Unit(ref mut unit)) => {
-            unit.add_child(child);
+        Some(&mut Node::Prim(ref mut prim)) => {
+            prim.add_child(child);
         }
 //        Some(&mut Node::VList(ref mut vlist)) => {
 //            vlist.add_child(child);
 //        }
         _ => {
-            panic!("parent must be a unit or a fragment to add the node: {:?}", child);
+            panic!("parent must be a prim or a fragment to add the node: {:?}", child);
         }
     }
 }
@@ -432,10 +432,10 @@ pub fn add_child<MC: Component>(stack: &mut Stack<MC>, child: Node<MC>) {
 #[doc(hidden)]
 pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'static str>) {
     if let Some(mut node) = stack.pop() {
-        // Check the enclosing unit
+        // Check the enclosing prim
         // TODO Check it during compilation. Possible?
-        if let (&mut Node::Unit(ref mut unit), Some(endtag)) = (&mut node, endtag) {
-            let starttag = unit.name();
+        if let (&mut Node::Prim(ref mut prim), Some(endtag)) = (&mut node, endtag) {
+            let starttag = prim.name();
             if !starttag.eq_ignore_ascii_case(endtag) {
                 panic!("wrong closing tag: <{}> -> </{}>", starttag, endtag);
             }
@@ -443,8 +443,8 @@ pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'st
         // Push the popped element to the last in the stack
         if !stack.is_empty() {
             match stack.last_mut() {
-                Some(&mut Node::Unit(ref mut unit)) => {
-                    unit.add_child(node);
+                Some(&mut Node::Prim(ref mut prim)) => {
+                    prim.add_child(node);
                 }
 //                Some(&mut Node::VList(ref mut vlist)) => {
 //                    vlist.add_child(node);
@@ -540,25 +540,25 @@ mod tests {
         let mut state = State { stack: Vec::<Node<Model>>::new() };
 
         let rect = egml::macros::rect::default();
-        let unit = egml::Unit::new("rect", rect.into());
+        let prim = egml::Prim::new("rect", rect.into());
 
-        state.stack.push(unit.into());
+        state.stack.push(prim.into());
         set_attr!(state, rect.x = 1.2.into());
         match state.stack.last().unwrap() {
-            Node::Unit(ref unit) => {
-                let x = unit.shape.rect().unwrap().x.val();
+            Node::Prim(ref prim) => {
+                let x = prim.shape.rect().unwrap().x.val();
                 assert_eq!(1.2, x);
             },
             _ => (),
         }
 
         let circle = egml::macros::circle::default();
-        let unit = egml::Unit::new("circle", circle.into());
-        state.stack.push(unit.into());
+        let prim = egml::Prim::new("circle", circle.into());
+        state.stack.push(prim.into());
         set_attr!(state, circle.r = 2.5.into());
         match state.stack.last().unwrap() {
-            Node::Unit(ref unit) => {
-                let r = unit.shape.circle().unwrap().r.val();
+            Node::Prim(ref prim) => {
+                let r = prim.shape.circle().unwrap().r.val();
                 assert_eq!(2.5, r);
             },
             _ => (),

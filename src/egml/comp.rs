@@ -3,7 +3,7 @@ use std::any::Any;
 use std::rc::Rc;
 use crate::egml::{
     Component, ChangeView, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
-    Node, NodeDefaults, Unit, Shape, ChildrenProcessed,
+    Node, NodeDefaults, Prim, Shape, ChildrenProcessed,
 };
 use crate::controller::InputEvent;
 
@@ -193,15 +193,15 @@ impl Comp {
             Finger::Location(loc) => {
                 let this = self as *mut Self;
                 match self.view_node_mut::<M>() {
-                    Node::Unit(unit) => Self::send_unit::<M, CM, MS>(this, unit, Finger::Location(loc), msgs),
-                    Node::Comp(_) => panic!("Wrong location tail: {:?}, link to Comp instead Unit", loc),
+                    Node::Prim(prim) => Self::send_prim::<M, CM, MS>(this, prim, Finger::Location(loc), msgs),
+                    Node::Comp(_) => panic!("Wrong location tail: {:?}, link to Comp instead Prim", loc),
                 }
             },
             Finger::Id(id) => (),
         }
     }
 
-    fn send_unit<M, CM, MS>(this: *mut Self, unit: &mut Unit<M>, to_child: Finger, msgs: MS)
+    fn send_prim<M, CM, MS>(this: *mut Self, prim: &mut Prim<M>, to_child: Finger, msgs: MS)
         where
             M: ViewableComponent<M>,
             CM: ViewableComponent<CM>,
@@ -209,14 +209,14 @@ impl Comp {
     {
         match to_child {
             Finger::None | Finger::Location(&[]) => {
-                panic!("Wrong location, link to Unit instead Comp");
+                panic!("Wrong location, link to Prim instead Comp");
             },
             Finger::Location(loc) => {
                 let idx = loc[0];
-                let len = unit.childs.len();
-                match unit.childs.get_mut(idx) {
-                    Some(Node::Unit(ref mut unit)) => {
-                        Self::send_unit::<M, CM, MS>(this, unit, Finger::Location(&loc[1..]), msgs)
+                let len = prim.childs.len();
+                match prim.childs.get_mut(idx) {
+                    Some(Node::Prim(ref mut prim)) => {
+                        Self::send_prim::<M, CM, MS>(this, prim, Finger::Location(&loc[1..]), msgs)
                     },
                     Some(Node::Comp(ref mut comp)) => {
                         if len == 1 {
