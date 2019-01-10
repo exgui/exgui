@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use crate::egml::{
     Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
-    Node, NodeDefaults, Comp, Shape, Listener, ChildrenProcessed, Transform,
+    Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
 use crate::controller::{InputEvent, MousePos};
@@ -45,15 +45,15 @@ impl<M: Component> Prim<M> {
         self.listeners.push(listener);
     }
 
-    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent, messages: &mut Vec<M::Message>) {
+    pub fn input(&mut self, event: InputEvent, messages: &mut Vec<M::Message>) {
         match event {
             InputEvent::MousePress(pos) => {
-                self.mouse_press(parent_comp, pos, messages)
+                self.mouse_press(pos, messages)
             }
         }
     }
 
-    pub fn mouse_press(&mut self, parent_comp: Option<*mut Comp>, pos: MousePos, messages: &mut Vec<M::Message>) {
+    pub fn mouse_press(&mut self, pos: MousePos, messages: &mut Vec<M::Message>) {
         if self.intersect(pos.x, pos.y) {
             for listener in self.listeners.iter() {
                 if let Some(msg) = listener.handle(Event::Click(ClickEvent)) {
@@ -62,7 +62,7 @@ impl<M: Component> Prim<M> {
             }
         }
         for child in self.childs.iter_mut() {
-            child.input(parent_comp, InputEvent::MousePress(pos), messages);
+            child.input(InputEvent::MousePress(pos), messages);
         }
     }
 

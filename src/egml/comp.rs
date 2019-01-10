@@ -2,8 +2,8 @@ use std::mem;
 use std::any::Any;
 use std::rc::Rc;
 use crate::egml::{
-    Component, ChangeView, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
-    Node, NodeDefaults, Prim, Shape, ChildrenProcessed,
+    Component, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
+    VecMessages, Node, NodeDefaults, Prim, Shape, ChangeView, ChildrenProcessed,
 };
 use crate::controller::InputEvent;
 
@@ -24,7 +24,7 @@ pub struct Comp {
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
-    pub inputer: Option<fn(*mut Comp, &mut Comp, InputEvent)>,
+    pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn VecMessages>)>,
     pub modify_handler: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn Any)>,
     pub pass_up_handler: Option<fn(&dyn Any) -> Box<dyn Any>>,
@@ -74,11 +74,10 @@ impl Comp {
             comp.view_node_mut::<M>().modify(&(*boxed_model));
             mem::replace(&mut comp.model, Some(boxed_model));
         });
-        self.inputer = Some(|_parent_comp: *mut Comp, comp: &mut Comp, event: InputEvent| {
+        self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn VecMessages>| {
             let mut messages = Vec::new();
-            let comp_ptr = comp as *mut Comp;
             comp.view_node_mut::<M>()
-                .input(Some(comp_ptr), event, &mut messages);
+                .input(event, &mut messages);
             comp.update_msgs::<M, _>(messages);
         });
     }
@@ -88,12 +87,18 @@ impl Comp {
             PM: ViewableComponent<PM>,
             M: ViewableComponent<M>,
     {
-        self.inputer = Some(|parent_comp: *mut Comp, comp: &mut Comp, event: InputEvent| {
+        self.inputer = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn VecMessages>| {
             let mut messages = Vec::new();
-            let comp_ptr = comp as *mut Comp;
             comp.view_node_mut::<M>()
-                .input(Some(comp_ptr), event, &mut messages);
-            Self::send_pass_up::<PM, M, _>(parent_comp, comp, messages);
+                .input(event, &mut messages);
+            let to_parent_messages = Self::send_pass_up::<PM, M, _>(comp, messages);
+            if let Some(parent_messages) = parent_messages {
+                let parent_messages = parent_messages.as_any_mut().downcast_mut::<Vec<PM::Message>>()
+                    .expect("Inputer can't downcast Vec<PM::Message>");
+                for msg in to_parent_messages.into_iter() {
+                    parent_messages.push(msg);
+                }
+            }
         });
     }
 
@@ -124,9 +129,9 @@ impl Comp {
         (*(*model)).downcast_mut::<M>().expect("Can't downcast model")
     }
 
-    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent) {
+    pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn VecMessages>) {
         self.inputer.map(|inputer| {
-            inputer(parent_comp.unwrap_or(self as *mut Comp), self, event)
+            inputer(self, event, messages)
         });
     }
 
@@ -191,17 +196,17 @@ impl Comp {
                 self.update_msgs::<CM, _>(msgs);
             },
             Finger::Location(loc) => {
-                let this = self as *mut Self;
-                match self.view_node_mut::<M>() {
-                    Node::Prim(prim) => Self::send_prim::<M, CM, MS>(this, prim, Finger::Location(loc), msgs),
+                let parent_msgs = match self.view_node_mut::<M>() {
+                    Node::Prim(prim) => Self::send_prim::<M, CM, MS>(prim, Finger::Location(loc), msgs),
                     Node::Comp(_) => panic!("Wrong location tail: {:?}, link to Comp instead Prim", loc),
-                }
+                };
+                self.update_msgs::<M, _>(parent_msgs);
             },
-            Finger::Id(id) => (),
+            Finger::Id(id) => unimplemented!(),
         }
     }
 
-    fn send_prim<M, CM, MS>(this: *mut Self, prim: &mut Prim<M>, to_child: Finger, msgs: MS)
+    fn send_prim<M, CM, MS>(prim: &mut Prim<M>, to_child: Finger, msgs: MS) -> Vec<M::Message>
         where
             M: ViewableComponent<M>,
             CM: ViewableComponent<CM>,
@@ -216,39 +221,37 @@ impl Comp {
                 let len = prim.childs.len();
                 match prim.childs.get_mut(idx) {
                     Some(Node::Prim(ref mut prim)) => {
-                        Self::send_prim::<M, CM, MS>(this, prim, Finger::Location(&loc[1..]), msgs)
+                        Self::send_prim::<M, CM, MS>(prim, Finger::Location(&loc[1..]), msgs)
                     },
                     Some(Node::Comp(ref mut comp)) => {
-                        if len == 1 {
-                            Self::send_pass_up::<M, CM, MS>(this, comp, msgs);
+                        if loc.len() == 1 {
+                            Self::send_pass_up::<M, CM, MS>(comp, msgs)
                         } else {
-                            comp.send_batch::<M, CM, MS>(Finger::Location(&loc[1..]), msgs);
+                            panic!("Wrong location tail: {:?}, idx {} link to comp instead prim", loc, idx)
                         }
                     },
                     None => panic!("Wrong location tail: {:?}, idx {} out of bounds {}", loc, idx, len),
                 }
             },
-            Finger::Id(id) => (),
+            Finger::Id(id) => unimplemented!(),
         }
     }
 
-    fn send_pass_up<M, CM, CMS>(parent_comp: *mut Comp, comp: &mut Comp, msgs: CMS)
+    fn send_pass_up<M, CM, CMS>(comp: &mut Comp, msgs: CMS) -> Vec<M::Message>
         where
             M: ViewableComponent<M>,
             CM: ViewableComponent<CM>,
             CMS: IntoIterator<Item = CM::Message>,
     {
-        let parent_comp = unsafe {&mut *parent_comp};
+        let mut parent_msgs = Vec::new();
         for msg in msgs.into_iter() {
             let parent_msg = comp.pass_up::<M>(&msg);
             comp.send_self::<CM>(msg);
             if let Some(parent_msg) = parent_msg {
-                let should_change = parent_comp
-                    .model_mut::<M>()
-                    .update(parent_msg);
-                parent_comp.change_if_necessary::<M>(should_change);
+                parent_msgs.push(parent_msg);
             }
         }
+        parent_msgs
     }
 
     fn update_msgs<M, MS>(&mut self, msgs: MS)

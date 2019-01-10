@@ -16,6 +16,7 @@ pub use self::shape::*;
 pub use self::transform::*;
 
 use std::fmt;
+use std::any::Any;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ChangeView {
@@ -51,7 +52,7 @@ pub type ShouldChangeView = bool;
 /// An interface of a UI-component. Uses `self` as a model.
 pub trait Component: Sized + 'static {
     /// Control message type which `update` loop get.
-    type Message: Clone + 'static;
+    type Message: ComponentMessage;
 
     /// Properties type of component implementation.
     /// It sould be serializable because it's sent to dynamicaly created
@@ -74,6 +75,27 @@ pub trait Component: Sized + 'static {
     /// Called for finalization on the final point of the component's lifetime.
     fn destroy(&mut self) { } // TODO Replace with `Drop`
 }
+
+pub trait ComponentMessage: Clone + 'static {}
+impl<T: Clone + 'static> ComponentMessage for T {}
+
+pub trait AsAny: Any {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn as_any(&self) -> &dyn Any {
+        self as &dyn Any
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self as &mut dyn Any
+    }
+}
+
+pub trait VecMessages: AsAny {}
+impl<M: ComponentMessage> VecMessages for Vec<M> {}
 
 /// Should be viewed relative to context and component environment.
 pub trait Viewable<M: Component> {

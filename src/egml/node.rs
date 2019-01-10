@@ -2,7 +2,7 @@ use std::any::Any;
 use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use crate::egml::{
-    Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
+    Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, VecMessages,
     Prim, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
 };
 use crate::controller::InputEvent;
@@ -21,10 +21,10 @@ pub struct NodeDefaults {
 }
 
 impl<M: Component> Node<M> {
-    pub fn input(&mut self, parent_comp: Option<*mut Comp>, event: InputEvent, messages: &mut Vec<M::Message>) {
+    pub fn input(&mut self, event: InputEvent, messages: &mut Vec<M::Message>) {
         match self {
-            Node::Prim(ref mut prim) => prim.input(parent_comp, event, messages),
-            Node::Comp(ref mut comp) => comp.input(parent_comp, event),
+            Node::Prim(ref mut prim) => prim.input(event, messages),
+            Node::Comp(ref mut comp) => comp.input(event, Some(messages as &mut dyn VecMessages)),
         }
     }
 

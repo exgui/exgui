@@ -43,13 +43,13 @@ impl MouseInput {
 
     pub fn left_pressed_comp(&self, comp: &mut Comp) {
         let pos = self.last_pos();
-        comp.input(None, InputEvent::MousePress(pos))
+        comp.input(InputEvent::MousePress(pos), None)
     }
 
     pub fn left_pressed_node<M: Component>(&self, node: &mut Node<M>) -> Vec<M::Message> {
         let pos = self.last_pos();
         let mut msgs = Vec::new();
-        node.input(None, InputEvent::MousePress(pos), &mut msgs);
+        node.input(InputEvent::MousePress(pos), &mut msgs);
         msgs
     }
 }
