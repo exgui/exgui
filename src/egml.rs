@@ -18,6 +18,13 @@ pub use self::transform::*;
 use std::fmt;
 use std::any::Any;
 
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub enum Finger<'a> {
+    Id(&'a str),
+    Location(&'a [usize]),
+    Root,
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum ChangeView {
     Rebuild,

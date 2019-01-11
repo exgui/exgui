@@ -2,7 +2,7 @@ use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use crate::egml::{
     Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
-    AnyVecMessages, Prim, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
+    AnyVecMessages, Prim, Comp, Shape, Word, Fill, Stroke, Translate, Finger, ChangeView,
 };
 use crate::controller::InputEvent;
 
@@ -17,6 +17,21 @@ pub struct NodeDefaults {
     pub fill: Option<Fill>,
     pub stroke: Option<Stroke>,
     pub translate: Option<Translate>,
+}
+
+#[derive(Debug, Copy, Clone)]
+pub enum GetError<'a> {
+    TargetIsPrim,
+    TargetIsComp,
+    IdxOutOfBounds {
+        idx: usize,
+        len: usize,
+        tail: &'a [usize]
+    },
+    LinkToCompInsteadPrim {
+        tail: &'a [usize]
+    },
+    NotFound,
 }
 
 impl<M: Component> Node<M> {
@@ -56,6 +71,190 @@ impl<M: Component> Node<M> {
             Some(comp)
         } else {
             None
+        }
+    }
+
+    pub fn get_comp<'a>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
+        match finger {
+            Finger::Root | Finger::Location(&[]) => {
+                match self {
+                    Node::Prim(_) => Err(GetError::TargetIsPrim),
+                    Node::Comp(comp) => Ok(comp)
+                }
+            },
+            Finger::Location(loc) => {
+                match self {
+                    Node::Prim(prim) => {
+                        let idx = loc[0];
+                        let len = prim.childs.len();
+                        match prim.childs.get(idx) {
+                            Some(node) => {
+                                node.get_comp(Finger::Location(&loc[1..]))
+                            },
+                            None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
+                        }
+                    },
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                }
+            },
+            Finger::Id(id) => {
+                let not_found = GetError::NotFound;
+                match self {
+                    Node::Prim(prim) => {
+                        for child in prim.childs.iter() {
+                            let result = child.get_comp(finger);
+                            if result.is_ok() {
+                                return result;
+                            }
+                        }
+                        Err(not_found)
+                    },
+                    Node::Comp(comp) => if id == comp.id().ok_or(not_found)? {
+                        Ok(comp)
+                    } else {
+                        Err(not_found)
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn get_comp_mut<'a>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
+        match finger {
+            Finger::Root | Finger::Location(&[]) => {
+                match self {
+                    Node::Prim(_) => Err(GetError::TargetIsPrim),
+                    Node::Comp(comp) => Ok(comp)
+                }
+            },
+            Finger::Location(loc) => {
+                match self {
+                    Node::Prim(prim) => {
+                        let idx = loc[0];
+                        let len = prim.childs.len();
+                        match prim.childs.get_mut(idx) {
+                            Some(node) => {
+                                node.get_comp_mut(Finger::Location(&loc[1..]))
+                            },
+                            None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
+                        }
+                    },
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                }
+            },
+            Finger::Id(id) => {
+                let not_found = GetError::NotFound;
+                match self {
+                    Node::Prim(prim) => {
+                        for child in prim.childs.iter_mut() {
+                            let result = child.get_comp_mut(finger);
+                            if result.is_ok() {
+                                return result;
+                            }
+                        }
+                        Err(not_found)
+                    },
+                    Node::Comp(comp) => if id == comp.id().ok_or(not_found)? {
+                        Ok(comp)
+                    } else {
+                        Err(not_found)
+                    }
+                }
+            },
+        }
+    }
+
+    pub fn get_prim<'a>(&self, finger: Finger<'a>) -> Result<&Prim<M>, GetError<'a>> {
+        match finger {
+            Finger::Root | Finger::Location(&[]) => {
+                match self {
+                    Node::Prim(prim) => Ok(prim),
+                    Node::Comp(_) => Err(GetError::TargetIsComp),
+                }
+            },
+            Finger::Location(loc) => {
+                match self {
+                    Node::Prim(prim) => {
+                        let idx = loc[0];
+                        let len = prim.childs.len();
+                        match prim.childs.get(idx) {
+                            Some(node) => {
+                                node.get_prim(Finger::Location(&loc[1..]))
+                            },
+                            None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
+                        }
+                    },
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                }
+            },
+            Finger::Id(id) => {
+                let not_found = GetError::NotFound;
+                match self {
+                    Node::Prim(prim) => {
+                        if let Some(prim_id) = prim.shape.id() {
+                            if id == prim_id {
+                                return Ok(prim);
+                            }
+                        }
+
+                        for child in prim.childs.iter() {
+                            let result = child.get_prim(finger);
+                            if result.is_ok() {
+                                return result;
+                            }
+                        }
+                        Err(not_found)
+                    },
+                    Node::Comp(_) => Err(not_found),
+                }
+            },
+        }
+    }
+
+    pub fn get_prim_mut<'a>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<M>, GetError<'a>> {
+        match finger {
+            Finger::Root | Finger::Location(&[]) => {
+                match self {
+                    Node::Prim(prim) => Ok(prim),
+                    Node::Comp(_) => Err(GetError::TargetIsComp),
+                }
+            },
+            Finger::Location(loc) => {
+                match self {
+                    Node::Prim(prim) => {
+                        let idx = loc[0];
+                        let len = prim.childs.len();
+                        match prim.childs.get_mut(idx) {
+                            Some(node) => {
+                                node.get_prim_mut(Finger::Location(&loc[1..]))
+                            },
+                            None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
+                        }
+                    },
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                }
+            },
+            Finger::Id(id) => {
+                let not_found = GetError::NotFound;
+                match self {
+                    Node::Prim(prim) => {
+                        if let Some(prim_id) = prim.shape.id() {
+                            if id == prim_id {
+                                return Ok(prim);
+                            }
+                        }
+
+                        for child in prim.childs.iter_mut() {
+                            let result = child.get_prim_mut(finger);
+                            if result.is_ok() {
+                                return result;
+                            }
+                        }
+                        Err(not_found)
+                    },
+                    Node::Comp(_) => Err(not_found),
+                }
+            },
         }
     }
 }

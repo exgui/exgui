@@ -29,6 +29,26 @@ pub enum Shape {
     Word(Word),
 }
 
+pub trait Shapeable {
+    fn rect(&self) -> Option<&Rect>;
+    fn rect_mut(&mut self) -> Option<&mut Rect>;
+
+    fn circle(&self) -> Option<&Circle>;
+    fn circle_mut(&mut self) -> Option<&mut Circle>;
+
+    fn path(&self) -> Option<&Path>;
+    fn path_mut(&mut self) -> Option<&mut Path>;
+
+    fn group(&self) -> Option<&Group>;
+    fn group_mut(&mut self) -> Option<&mut Group>;
+
+    fn text(&self) -> Option<&Text>;
+    fn text_mut(&mut self) -> Option<&mut Text>;
+
+    fn word(&self) -> Option<&Word>;
+    fn word_mut(&mut self) -> Option<&mut Word>;
+}
+
 pub struct ShapeRef<'a>(pub &'a Shape);
 pub struct ShapeRefMut<'a>(pub &'a mut Shape);
 
@@ -44,92 +64,107 @@ impl Shape {
         }
     }
 
+    #[inline]
     pub fn as_ref(&self) -> ShapeRef {
         ShapeRef(self)
     }
 
+    #[inline]
     pub fn as_ref_mut(&mut self) -> ShapeRefMut {
         ShapeRefMut(self)
     }
-
-    pub fn rect(&self) -> Option<&Rect> {
+}
+impl Shapeable for Shape {
+    #[inline]
+    fn rect(&self) -> Option<&Rect> {
         match self {
             Shape::Rect(ref rect) => Some(rect),
             _ => None,
         }
     }
 
-    pub fn rect_mut(&mut self) -> Option<&mut Rect> {
+    #[inline]
+    fn rect_mut(&mut self) -> Option<&mut Rect> {
         match self {
             Shape::Rect(ref mut rect) => Some(rect),
             _ => None,
         }
     }
 
-    pub fn circle(&self) -> Option<&Circle> {
+    #[inline]
+    fn circle(&self) -> Option<&Circle> {
         match self {
             Shape::Circle(ref circle) => Some(circle),
             _ => None,
         }
     }
 
-    pub fn circle_mut(&mut self) -> Option<&mut Circle> {
+    #[inline]
+    fn circle_mut(&mut self) -> Option<&mut Circle> {
         match self {
             Shape::Circle(ref mut circle) => Some(circle),
             _ => None,
         }
     }
 
-    pub fn path(&self) -> Option<&Path> {
+    #[inline]
+    fn path(&self) -> Option<&Path> {
         match self {
             Shape::Path(ref path) => Some(path),
             _ => None,
         }
     }
 
-    pub fn path_mut(&mut self) -> Option<&mut Path> {
+    #[inline]
+    fn path_mut(&mut self) -> Option<&mut Path> {
         match self {
             Shape::Path(ref mut path) => Some(path),
             _ => None,
         }
     }
 
-    pub fn group(&self) -> Option<&Group> {
+    #[inline]
+    fn group(&self) -> Option<&Group> {
         match self {
             Shape::Group(ref group) => Some(group),
             _ => None,
         }
     }
 
-    pub fn group_mut(&mut self) -> Option<&mut Group> {
+    #[inline]
+    fn group_mut(&mut self) -> Option<&mut Group> {
         match self {
             Shape::Group(ref mut group) => Some(group),
             _ => None,
         }
     }
 
-    pub fn text(&self) -> Option<&Text> {
+    #[inline]
+    fn text(&self) -> Option<&Text> {
         match self {
             Shape::Text(ref text) => Some(text),
             _ => None,
         }
     }
 
-    pub fn text_mut(&mut self) -> Option<&mut Text> {
+    #[inline]
+    fn text_mut(&mut self) -> Option<&mut Text> {
         match self {
             Shape::Text(ref mut text) => Some(text),
             _ => None,
         }
     }
 
-    pub fn word(&self) -> Option<&Word> {
+    #[inline]
+    fn word(&self) -> Option<&Word> {
         match self {
             Shape::Word(ref word) => Some(word),
             _ => None,
         }
     }
 
-    pub fn word_mut(&mut self) -> Option<&mut Word> {
+    #[inline]
+    fn word_mut(&mut self) -> Option<&mut Word> {
         match self {
             Shape::Word(ref mut word) => Some(word),
             _ => None,
@@ -138,52 +173,64 @@ impl Shape {
 }
 
 impl<'a> ShapeRef<'a> {
+    #[inline]
     pub fn rect(&self) -> Option<&Rect> {
         self.0.rect()
     }
 
+    #[inline]
     pub fn circle(&self) -> Option<&Circle> {
         self.0.circle()
     }
 
+    #[inline]
     pub fn path(&self) -> Option<&Path> {
         self.0.path()
     }
 
+    #[inline]
     pub fn group(&self) -> Option<&Group> {
         self.0.group()
     }
 
+    #[inline]
     pub fn text(&self) -> Option<&Text> {
         self.0.text()
     }
 
+    #[inline]
     pub fn word(&self) -> Option<&Word> {
         self.0.word()
     }
 }
 
 impl<'a> ShapeRefMut<'a> {
+    #[inline]
     pub fn rect(&mut self) -> Option<&mut Rect> {
         self.0.rect_mut()
     }
 
+    #[inline]
     pub fn circle(&mut self) -> Option<&mut Circle> {
         self.0.circle_mut()
     }
 
+    #[inline]
     pub fn path(&mut self) -> Option<&mut Path> {
         self.0.path_mut()
     }
 
+    #[inline]
     pub fn group(&mut self) -> Option<&mut Group> {
         self.0.group_mut()
     }
 
+    #[inline]
     pub fn text(&mut self) -> Option<&mut Text> {
         self.0.text_mut()
     }
 
+    #[inline]
     pub fn word(&mut self) -> Option<&mut Word> {
         self.0.word_mut()
     }

@@ -2,8 +2,8 @@ use std::borrow::Cow;
 use std::rc::Rc;
 use crate::egml::{
     Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
-    Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
-    event::{Event, ClickEvent}
+    Node, NodeDefaults, Shape, Shapeable, Listener, ChildrenProcessed, Transform,
+    shape::*, event::{Event, ClickEvent}
 };
 use crate::controller::{InputEvent, MousePos};
 
@@ -228,6 +228,68 @@ impl<M: Component> Drawable for Prim<M> {
 
     fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
         Some(Box::new(self.childs.iter_mut().map(|node| node as &mut dyn Drawable)))
+    }
+}
+
+impl<M: Component> Shapeable for Prim<M> {
+    #[inline]
+    fn rect(&self) -> Option<&Rect> {
+        self.shape.rect()
+    }
+
+    #[inline]
+    fn rect_mut(&mut self) -> Option<&mut Rect> {
+        self.shape.rect_mut()
+    }
+
+    #[inline]
+    fn circle(&self) -> Option<&Circle> {
+        self.shape.circle()
+    }
+
+    #[inline]
+    fn circle_mut(&mut self) -> Option<&mut Circle> {
+        self.shape.circle_mut()
+    }
+
+    #[inline]
+    fn path(&self) -> Option<&Path> {
+        self.shape.path()
+    }
+
+    #[inline]
+    fn path_mut(&mut self) -> Option<&mut Path> {
+        self.shape.path_mut()
+    }
+
+    #[inline]
+    fn group(&self) -> Option<&Group> {
+        self.shape.group()
+    }
+
+    #[inline]
+    fn group_mut(&mut self) -> Option<&mut Group> {
+        self.shape.group_mut()
+    }
+
+    #[inline]
+    fn text(&self) -> Option<&Text> {
+        self.shape.text()
+    }
+
+    #[inline]
+    fn text_mut(&mut self) -> Option<&mut Text> {
+        self.shape.text_mut()
+    }
+
+    #[inline]
+    fn word(&self) -> Option<&Word> {
+        self.shape.word()
+    }
+
+    #[inline]
+    fn word_mut(&mut self) -> Option<&mut Word> {
+        self.shape.word_mut()
     }
 }
 

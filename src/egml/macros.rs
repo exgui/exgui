@@ -465,7 +465,7 @@ pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::egml::{self, Viewable, Color, ChangeView};
+    use crate::egml::{self, Viewable, Shapeable, Color, ChangeView};
 
     struct Model {
         val: f32,
@@ -546,7 +546,7 @@ mod tests {
         set_attr!(state, rect.x = 1.2.into());
         match state.stack.last().unwrap() {
             Node::Prim(ref prim) => {
-                let x = prim.shape.rect().unwrap().x.val();
+                let x = prim.rect().unwrap().x.val();
                 assert_eq!(1.2, x);
             },
             _ => (),
@@ -558,7 +558,7 @@ mod tests {
         set_attr!(state, circle.r = 2.5.into());
         match state.stack.last().unwrap() {
             Node::Prim(ref prim) => {
-                let r = prim.shape.circle().unwrap().r.val();
+                let r = prim.circle().unwrap().r.val();
                 assert_eq!(2.5, r);
             },
             _ => (),

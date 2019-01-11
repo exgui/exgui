@@ -2,17 +2,10 @@ use std::mem;
 use std::rc::Rc;
 use crate::egml::{
     Component, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel, AnyMessage,
-    AnyVecMessages, AnyProperties, AnyNode, Node, NodeDefaults, Prim, Shape, ChangeView,
-    ChildrenProcessed,
+    AnyVecMessages, AnyProperties, AnyNode, Node, NodeDefaults, Prim, Shape, Finger, ChangeView,
+    ChildrenProcessed, GetError,
 };
 use crate::controller::InputEvent;
-
-#[derive(Copy, Clone, Eq, PartialEq)]
-pub enum Finger<'a> {
-    Id(&'a str),
-    Location(&'a [usize]),
-    None,
-}
 
 #[derive(Default)]
 pub struct Comp {
@@ -31,6 +24,10 @@ pub struct Comp {
 }
 
 impl Comp {
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
     /// This method prepares a generator to make a new instance of the `Component`.
     pub fn lazy<M>() -> (M::Properties, Self)
         where
@@ -107,6 +104,22 @@ impl Comp {
         (self.resolver.expect("Can't resolve with uninitialized resolver"))(
             self
         )
+    }
+
+    pub fn get_comp<'a, M: Component>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
+        self.view_node::<M>().get_comp(finger)
+    }
+
+    pub fn get_comp_mut<'a, M: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
+        self.view_node_mut::<M>().get_comp_mut(finger)
+    }
+
+    pub fn get_prim<'a, M: Component>(&self, finger: Finger<'a>) -> Result<&Prim<M>, GetError<'a>> {
+        self.view_node::<M>().get_prim(finger)
+    }
+
+    pub fn get_prim_mut<'a, M: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<M>, GetError<'a>> {
+        self.view_node_mut::<M>().get_prim_mut(finger)
     }
 
     pub fn view_node<M: Component>(&self) -> &Node<M> {
@@ -191,50 +204,10 @@ impl Comp {
             CM: ViewableComponent<CM>,
             MS: IntoIterator<Item = CM::Message>,
     {
-        match to_child {
-            Finger::None | Finger::Location(&[]) => {
-                self.update_msgs::<CM, _>(msgs);
-            },
-            Finger::Location(loc) => {
-                let parent_msgs = match self.view_node_mut::<M>() {
-                    Node::Prim(prim) => Self::send_prim::<M, CM, MS>(prim, Finger::Location(loc), msgs),
-                    Node::Comp(_) => panic!("Wrong location tail: {:?}, link to Comp instead Prim", loc),
-                };
-                self.update_msgs::<M, _>(parent_msgs);
-            },
-            Finger::Id(id) => unimplemented!(),
-        }
-    }
-
-    fn send_prim<M, CM, MS>(prim: &mut Prim<M>, to_child: Finger, msgs: MS) -> Vec<M::Message>
-        where
-            M: ViewableComponent<M>,
-            CM: ViewableComponent<CM>,
-            MS: IntoIterator<Item = CM::Message>,
-    {
-        match to_child {
-            Finger::None | Finger::Location(&[]) => {
-                panic!("Wrong location, link to Prim instead Comp");
-            },
-            Finger::Location(loc) => {
-                let idx = loc[0];
-                let len = prim.childs.len();
-                match prim.childs.get_mut(idx) {
-                    Some(Node::Prim(ref mut prim)) => {
-                        Self::send_prim::<M, CM, MS>(prim, Finger::Location(&loc[1..]), msgs)
-                    },
-                    Some(Node::Comp(ref mut comp)) => {
-                        if loc.len() == 1 {
-                            Self::send_pass_up::<M, CM, MS>(comp, msgs)
-                        } else {
-                            panic!("Wrong location tail: {:?}, idx {} link to comp instead prim", loc, idx)
-                        }
-                    },
-                    None => panic!("Wrong location tail: {:?}, idx {} out of bounds {}", loc, idx, len),
-                }
-            },
-            Finger::Id(id) => unimplemented!(),
-        }
+        let comp = self.get_comp_mut::<M>(to_child)
+            .expect("Send batch: Comp not found");
+        let parent_msgs = Self::send_pass_up::<M, CM, MS>(comp, msgs);
+        self.update_msgs::<M, _>(parent_msgs);
     }
 
     fn send_pass_up<M, CM, CMS>(comp: &mut Comp, msgs: CMS) -> Vec<M::Message>
