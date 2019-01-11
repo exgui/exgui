@@ -1,6 +1,4 @@
-use std::any::Any;
-use crate::egml::{Real, RealValue};
-use super::{Fill, Stroke, Transform};
+use crate::egml::{Real, RealValue, AnyModel, Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Rect {
@@ -12,7 +10,7 @@ pub struct Rect {
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub transform: Option<Transform>,
-    pub modifier: Option<fn(&mut Rect, &dyn Any)>,
+    pub modifier: Option<fn(&mut Rect, &dyn AnyModel)>,
 }
 
 impl Rect {

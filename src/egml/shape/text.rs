@@ -1,5 +1,4 @@
-use std::any::Any;
-use crate::egml::{Real, RealValue, Converter, Fill, Stroke, Transform};
+use crate::egml::{AnyModel, Real, RealValue, Converter, Fill, Stroke, Transform};
 
 #[derive(Default, Clone)]
 pub struct Text {
@@ -12,7 +11,7 @@ pub struct Text {
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub transform: Option<Transform>,
-    pub modifier: Option<fn(&mut Text, &dyn Any)>,
+    pub modifier: Option<fn(&mut Text, &dyn AnyModel)>,
 }
 
 impl Text {

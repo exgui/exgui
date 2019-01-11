@@ -58,7 +58,7 @@ pub trait Component: Sized + 'static {
     /// It sould be serializable because it's sent to dynamicaly created
     /// component (layed under `Comp`) and must be restored for a component
     /// with unknown type.
-    type Properties: Clone + PartialEq + Default;
+    type Properties: ComponentProperties;
 
     /// Initialization routine which could use a context.
     fn create(props: &Self::Properties/*, link: ComponentLink<Self>*/) -> Self;
@@ -79,23 +79,8 @@ pub trait Component: Sized + 'static {
 pub trait ComponentMessage: Clone + 'static {}
 impl<T: Clone + 'static> ComponentMessage for T {}
 
-pub trait AsAny: Any {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-}
-
-impl<T: Any> AsAny for T {
-    fn as_any(&self) -> &dyn Any {
-        self as &dyn Any
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self as &mut dyn Any
-    }
-}
-
-pub trait VecMessages: AsAny {}
-impl<M: ComponentMessage> VecMessages for Vec<M> {}
+pub trait ComponentProperties: Clone + PartialEq + Default + 'static {}
+impl<T: Clone + PartialEq + Default + 'static> ComponentProperties for T {}
 
 /// Should be viewed relative to context and component environment.
 pub trait Viewable<M: Component> {
@@ -132,6 +117,41 @@ pub trait Drawable {
         }
     }
 }
+
+pub trait AsAny: Any {
+    fn into_any(self: Box<Self>) -> Box<dyn Any>;
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+}
+
+impl<T: Any> AsAny for T {
+    fn into_any(self: Box<Self>) -> Box<dyn Any> {
+        self
+    }
+
+    fn as_any(&self) -> &dyn Any {
+        self as &dyn Any
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self as &mut dyn Any
+    }
+}
+
+pub trait AnyModel: AsAny {}
+impl<M: Component> AnyModel for M {}
+
+pub trait AnyMessage: AsAny {}
+impl<M: ComponentMessage> AnyMessage for M {}
+
+pub trait AnyVecMessages: AsAny {}
+impl<M: ComponentMessage> AnyVecMessages for Vec<M> {}
+
+pub trait AnyProperties: AsAny {}
+impl<P: ComponentProperties> AnyProperties for P {}
+
+pub trait AnyNode: AsAny {}
+impl<N: Nodeable> AnyNode for N {}
 
 /// `Listener` trait is an universal implementation of an event listener
 /// which helps to bind Node-listener to input controller's output.

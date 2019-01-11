@@ -1,8 +1,7 @@
-use std::any::Any;
 use std::borrow::Cow;
 use std::rc::Rc;
 use crate::egml::{
-    Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut,
+    Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
     Node, NodeDefaults, Shape, Listener, ChildrenProcessed, Transform,
     event::{Event, ClickEvent}
 };
@@ -66,7 +65,7 @@ impl<M: Component> Prim<M> {
         }
     }
 
-    pub fn modify(&mut self, model: &dyn Any) {
+    pub fn modify(&mut self, model: &dyn AnyModel) {
         match self.shape {
             Shape::Rect(ref mut r) => {
                 if let Some(modifier) = r.modifier {

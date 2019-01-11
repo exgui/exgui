@@ -1,6 +1,4 @@
-use std::any::Any;
-use crate::egml::Real;
-use super::{Fill, Stroke, Transform};
+use crate::egml::{Real, AnyModel, Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Path {
@@ -9,7 +7,7 @@ pub struct Path {
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub transform: Option<Transform>,
-    pub modifier: Option<fn(&mut Path, &dyn Any)>,
+    pub modifier: Option<fn(&mut Path, &dyn AnyModel)>,
 }
 
 impl Path {

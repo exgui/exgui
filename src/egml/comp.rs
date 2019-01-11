@@ -1,9 +1,9 @@
 use std::mem;
-use std::any::Any;
 use std::rc::Rc;
 use crate::egml::{
-    Component, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
-    VecMessages, Node, NodeDefaults, Prim, Shape, ChangeView, ChildrenProcessed,
+    Component, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel, AnyMessage,
+    AnyVecMessages, AnyProperties, AnyNode, Node, NodeDefaults, Prim, Shape, ChangeView,
+    ChildrenProcessed,
 };
 use crate::controller::InputEvent;
 
@@ -17,17 +17,17 @@ pub enum Finger<'a> {
 #[derive(Default)]
 pub struct Comp {
     pub id: Option<String>,
-    pub model: Option<Box<dyn Any>>,
-    pub props: Option<Box<dyn Any>>,
-    pub view_node: Option<Box<dyn Any>>,
+    pub model: Option<Box<dyn AnyModel>>,
+    pub props: Option<Box<dyn AnyProperties>>,
+    pub view_node: Option<Box<dyn AnyNode>>,
     pub defaults: Option<Rc<NodeDefaults>>,
     pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
-    pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn VecMessages>)>,
+    pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn AnyVecMessages>)>,
     pub modify_handler: Option<fn(&mut Comp)>,
-    pub modifier: Option<fn(&mut Comp, &dyn Any)>,
-    pub pass_up_handler: Option<fn(&dyn Any) -> Box<dyn Any>>,
+    pub modifier: Option<fn(&mut Comp, &dyn AnyModel)>,
+    pub pass_up_handler: Option<fn(&dyn AnyMessage) -> Box<dyn AnyMessage>>,
 }
 
 impl Comp {
@@ -53,7 +53,7 @@ impl Comp {
         where
             M: ViewableComponent<M>,
     {
-        let model = <M as Component>::create(&props);
+        let model = M::create(&props);
         let node = model.view();
         self.model = Some(Box::new(model));
         self.view_node = Some(Box::new(node));
@@ -74,7 +74,7 @@ impl Comp {
             comp.view_node_mut::<M>().modify(&(*boxed_model));
             mem::replace(&mut comp.model, Some(boxed_model));
         });
-        self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn VecMessages>| {
+        self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
             comp.view_node_mut::<M>()
                 .input(event, &mut messages);
@@ -87,7 +87,7 @@ impl Comp {
             PM: ViewableComponent<PM>,
             M: ViewableComponent<M>,
     {
-        self.inputer = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn VecMessages>| {
+        self.inputer = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
             comp.view_node_mut::<M>()
                 .input(event, &mut messages);
@@ -111,25 +111,25 @@ impl Comp {
 
     pub fn view_node<M: Component>(&self) -> &Node<M> {
         let node = self.view_node.as_ref().expect("Can't downcast node - it is None");
-        (*(*node)).downcast_ref::<Node<M>>().expect("Can't downcast node")
+        node.as_any().downcast_ref::<Node<M>>().expect("Can't downcast node")
     }
 
     pub fn view_node_mut<M: Component>(&mut self) -> &mut Node<M> {
         let node = self.view_node.as_mut().expect("Can't downcast node - it is None");
-        (*(*node)).downcast_mut::<Node<M>>().expect("Can't downcast node")
+        node.as_any_mut().downcast_mut::<Node<M>>().expect("Can't downcast node")
     }
 
     pub fn model<M: Component>(&self) -> &M {
         let model = self.model.as_ref().expect("Can't downcast model - it is None");
-        (*(*model)).downcast_ref::<M>().expect("Can't downcast model")
+        model.as_any().downcast_ref::<M>().expect("Can't downcast model")
     }
 
     pub fn model_mut<M: Component>(&mut self) -> &mut M {
         let model = self.model.as_mut().expect("Can't downcast model - it is None");
-        (*(*model)).downcast_mut::<M>().expect("Can't downcast model")
+        model.as_any_mut().downcast_mut::<M>().expect("Can't downcast model")
     }
 
-    pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn VecMessages>) {
+    pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn AnyVecMessages>) {
         self.inputer.map(|inputer| {
             inputer(self, event, messages)
         });
@@ -139,7 +139,7 @@ impl Comp {
         self.defaults.as_ref().map(|d| Rc::clone(d))
     }
 
-    pub fn modify(&mut self, model: Option<&dyn Any>) {
+    pub fn modify(&mut self, model: Option<&dyn AnyModel>) {
         self.modifier.map(|modifier| {
             modifier(self, model.expect("Call `Comp::modify` without model, but modifier is exists"))
         });
@@ -152,9 +152,9 @@ impl Comp {
         });
     }
 
-    pub fn pass_up<M: Component>(&mut self, msg: &dyn Any) -> Option<M::Message> {
+    pub fn pass_up<M: Component>(&mut self, msg: &dyn AnyMessage) -> Option<M::Message> {
         self.pass_up_handler.map(|pass_up_handler| {
-            *pass_up_handler(msg).downcast::<M::Message>()
+            *pass_up_handler(msg).into_any().downcast::<M::Message>()
                 .expect("Can't downcast pass up msg")
         })
     }

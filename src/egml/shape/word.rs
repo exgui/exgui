@@ -1,11 +1,11 @@
-use std::any::Any;
 use std::convert::AsRef;
+use crate::egml::AnyModel;
 
 #[derive(Default)]
 pub struct Word {
     pub id: Option<String>,
     pub content: String,
-    pub modifier: Option<fn(&mut Word, &dyn Any)>,
+    pub modifier: Option<fn(&mut Word, &dyn AnyModel)>,
 }
 
 impl Word {

@@ -1,9 +1,8 @@
-use std::any::Any;
 use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use crate::egml::{
-    Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, VecMessages,
-    Prim, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
+    Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
+    AnyVecMessages, Prim, Comp, Shape, Word, Fill, Stroke, Translate, ChangeView,
 };
 use crate::controller::InputEvent;
 
@@ -24,7 +23,7 @@ impl<M: Component> Node<M> {
     pub fn input(&mut self, event: InputEvent, messages: &mut Vec<M::Message>) {
         match self {
             Node::Prim(ref mut prim) => prim.input(event, messages),
-            Node::Comp(ref mut comp) => comp.input(event, Some(messages as &mut dyn VecMessages)),
+            Node::Comp(ref mut comp) => comp.input(event, Some(messages as &mut dyn AnyVecMessages)),
         }
     }
 
@@ -81,7 +80,7 @@ impl<M: ViewableComponent<M>> Node<M> {
         }
     }
 
-    pub fn modify(&mut self, model: &dyn Any) {
+    pub fn modify(&mut self, model: &dyn AnyModel) {
         match self {
             Node::Prim(ref mut prim) => {
                 prim.modify(model);
@@ -151,6 +150,9 @@ impl<M: Component> Drawable for Node<M> {
         }
     }
 }
+
+pub trait Nodeable: 'static {}
+impl<M: Component> Nodeable for Node<M> {}
 
 impl<M: Component> From<Prim<M>> for Node<M> {
     fn from(prim: Prim<M>) -> Self {

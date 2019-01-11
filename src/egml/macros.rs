@@ -32,7 +32,7 @@ macro_rules! egml_impl {
         egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
     (@comp $state:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident : $pcm:ty | $handler:expr, $($tail:tt)*)) => {
-        ($pair.1).modifier = Some(move |$this: &mut $crate::egml::Comp, $model: &dyn std::any::Any| {
+        ($pair.1).modifier = Some(move |$this: &mut $crate::egml::Comp, $model: &dyn $crate::egml::AnyModel| {
             let $model = $model.downcast_ref::<$pcm>()
                 .expect(concat!("Modifier of ", stringify!($comp), " can't downcast model to ", stringify!($pcm)));
             $handler
@@ -40,11 +40,11 @@ macro_rules! egml_impl {
         egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
     (@comp $state:ident $comp:ty, $pair:ident (pass_up = | $msg:ident | $handler:expr, $($tail:tt)*)) => {
-        ($pair.1).pass_up_handler = Some(move |$msg: &dyn std::any::Any| {
-            let $msg = $msg.downcast_ref::<<$comp as $crate::egml::Component>::Message>()
+        ($pair.1).pass_up_handler = Some(move |$msg: &dyn $crate::egml::AnyMessage| {
+            let $msg = $msg.as_any().downcast_ref::<<$comp as $crate::egml::Component>::Message>()
                 .expect(concat!("Pass up handler of ", stringify!($comp), " can't downcast msg to ", stringify!($comp::Message)))
                 .clone();
-            Box::new($handler) as Box<dyn std::any::Any>
+            Box::new($handler) as Box<dyn $crate::egml::AnyMessage>
         });
         egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
@@ -256,8 +256,8 @@ macro_rules! egml_impl {
         egml_impl! { $state ($($tail)*) }
     };
     ($state:ident $shape:ident ($for_child:expr, modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
-        set_child_attr!($state, $for_child, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn std::any::Any| {
-            let $model = $model.downcast_ref::<$cm>()
+        set_child_attr!($state, $for_child, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn $crate::egml::AnyModel| {
+            let $model = $model.as_any().downcast_ref::<$cm>()
                 .expect(concat!("Modifier of ", stringify!($shape), " can't downcast model to ", stringify!($cm)));
             $handler
         }));

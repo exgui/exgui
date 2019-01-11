@@ -1,6 +1,4 @@
-use std::any::Any;
-use crate::egml::{Real, RealValue};
-use super::{Fill, Stroke, Transform};
+use crate::egml::{Real, RealValue, AnyModel, Fill, Stroke, Transform};
 
 #[derive(Default)]
 pub struct Circle {
@@ -11,7 +9,7 @@ pub struct Circle {
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub transform: Option<Transform>,
-    pub modifier: Option<fn(&mut Circle, &dyn Any)>,
+    pub modifier: Option<fn(&mut Circle, &dyn AnyModel)>,
 }
 
 impl Circle {

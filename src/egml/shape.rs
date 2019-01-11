@@ -20,8 +20,6 @@ pub use self::stroke::*;
 pub use self::fill::*;
 pub use self::translate::*;
 
-use crate::egml::transform::Transform;
-
 pub enum Shape {
     Rect(Rect),
     Circle(Circle),
