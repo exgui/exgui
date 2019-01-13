@@ -28,7 +28,7 @@ pub enum GetError<'a> {
         len: usize,
         tail: &'a [usize]
     },
-    LinkToCompInsteadPrim {
+    LinkToCompInsteadOfPrim {
         tail: &'a [usize]
     },
     NotFound,
@@ -94,7 +94,7 @@ impl<M: Component> Node<M> {
                             None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
                         }
                     },
-                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadOfPrim { tail: loc }),
                 }
             },
             Finger::Id(id) => {
@@ -139,7 +139,7 @@ impl<M: Component> Node<M> {
                             None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
                         }
                     },
-                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadOfPrim { tail: loc }),
                 }
             },
             Finger::Id(id) => {
@@ -184,7 +184,7 @@ impl<M: Component> Node<M> {
                             None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
                         }
                     },
-                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadOfPrim { tail: loc }),
                 }
             },
             Finger::Id(id) => {
@@ -231,7 +231,7 @@ impl<M: Component> Node<M> {
                             None => Err(GetError::IdxOutOfBounds { idx, len, tail: loc }),
                         }
                     },
-                    Node::Comp(_) => Err(GetError::LinkToCompInsteadPrim { tail: loc }),
+                    Node::Comp(_) => Err(GetError::LinkToCompInsteadOfPrim { tail: loc }),
                 }
             },
             Finger::Id(id) => {
