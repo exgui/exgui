@@ -33,7 +33,7 @@ macro_rules! egml_impl {
     };
     (@comp $state:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident : $pcm:ty | $handler:expr, $($tail:tt)*)) => {
         ($pair.1).modifier = Some(move |$this: &mut $crate::egml::Comp, $model: &dyn $crate::egml::AnyModel| {
-            let $model = $model.downcast_ref::<$pcm>()
+            let $model = $model.as_any().downcast_ref::<$pcm>()
                 .expect(concat!("Modifier of ", stringify!($comp), " can't downcast model to ", stringify!($pcm)));
             $handler
         });
