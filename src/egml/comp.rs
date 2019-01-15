@@ -1,9 +1,9 @@
 use std::mem;
 use std::rc::Rc;
 use crate::egml::{
-    Component, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel, AnyMessage,
-    AnyVecMessages, AnyProperties, AnyNode, Node, NodeDefaults, Prim, Shape, Finger, ChangeView,
-    ChildrenProcessed, GetError,
+    Component, ComponentMessage, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut,
+    AnyModel, AnyMessage, AnyVecMessages, AnyProperties, AnyNode, Node, NodeDefaults, Prim, Shape,
+    Finger, ChangeView, ChildrenProcessed, GetError,
 };
 use crate::controller::InputEvent;
 
@@ -18,9 +18,18 @@ pub struct Comp {
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
     pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn AnyVecMessages>)>,
-    pub modify_handler: Option<fn(&mut Comp)>,
+    pub modify_interior_closure: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn AnyModel)>,
     pub pass_up_handler: Option<fn(&dyn AnyMessage) -> Box<dyn AnyMessage>>,
+    pub update_closure: Option<fn(&mut Comp, &mut dyn AnyVecMessages)>,
+}
+
+trait CompInside {
+    fn modify_interior<SelfModel>(&mut self)
+    where SelfModel: ViewableComponent<SelfModel>;
+
+    fn change_view_if_necessary<SelfModel>(&mut self, should_change: ChangeView)
+    where SelfModel: ViewableComponent<SelfModel>;
 }
 
 impl Comp {
@@ -29,66 +38,75 @@ impl Comp {
     }
 
     /// This method prepares a generator to make a new instance of the `Component`.
-    pub fn lazy<M>() -> (M::Properties, Self)
-        where
-            M: ViewableComponent<M>,
+    pub fn lazy<SelfModel>() -> (SelfModel::Properties, Self)
+    where
+        SelfModel: ViewableComponent<SelfModel>,
     {
         (Default::default(), Default::default())
     }
 
-    pub fn new<M>(props: M::Properties) -> Self
-        where
-            M: ViewableComponent<M>,
+    pub fn new<SelfModel>(props: SelfModel::Properties) -> Self
+    where
+        SelfModel: ViewableComponent<SelfModel>,
     {
         let mut comp = Comp::default();
-        comp.init::<M>(props);
+        comp.init::<SelfModel>(props);
         comp
     }
 
     /// Create model and attach properties associated with the component.
-    pub fn init<M>(&mut self, props: M::Properties)
+    pub fn init<SelfModel>(&mut self, props: SelfModel::Properties)
         where
-            M: ViewableComponent<M>,
+            SelfModel: ViewableComponent<SelfModel>,
     {
-        let model = M::create(&props);
+        let model = SelfModel::create(&props);
         let node = model.view();
         self.model = Some(Box::new(model));
         self.view_node = Some(Box::new(node));
         self.props = Some(Box::new(props));
         self.resolver = Some(|comp: &mut Comp| {
             let defaults = comp.cloned_defaults();
-            comp.view_node_mut::<M>().resolve(defaults)
+            comp.view_node_mut::<SelfModel>().resolve(defaults)
         });
         self.drawer = Some(|comp: &Comp| {
-            comp.view_node::<M>() as &dyn Drawable
+            comp.view_node::<SelfModel>() as &dyn Drawable
         });
         self.drawer_mut = Some(|comp: &mut Comp| {
-            comp.view_node_mut::<M>() as &mut dyn Drawable
+            comp.view_node_mut::<SelfModel>() as &mut dyn Drawable
         });
-        self.modify_handler = Some(|comp: &mut Comp| {
-            let boxed_model = mem::replace(&mut comp.model, None)
-                .expect("Modifier can't extract model");
-            comp.view_node_mut::<M>().modify(&(*boxed_model));
-            mem::replace(&mut comp.model, Some(boxed_model));
+
+        self.modify_interior_closure = Some(|comp: &mut Comp| {
+            comp.modify_interior::<SelfModel>();
         });
+
         self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
-            comp.view_node_mut::<M>()
+            comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
-            comp.update_msgs::<M, _>(messages);
+            comp.update_msgs(messages);
+        });
+
+        self.update_closure = Some(|comp: &mut Comp, messages: &mut dyn AnyVecMessages| {
+            let messages = messages.as_any_mut().downcast_mut::<Vec<SelfModel::Message>>()
+                .expect("Can't downcast AnyVecMessages to Vec<Message> for update");
+            let mut should_change = ChangeView::None;
+            for msg in messages.drain(..) {
+                should_change.up(comp.model_mut::<SelfModel>().update(msg));
+            }
+            comp.change_view_if_necessary::<SelfModel>(should_change);
         });
     }
 
-    pub fn init_viewable<PM, M>(&mut self)
+    pub fn init_viewable<PM, SelfModel>(&mut self)
         where
             PM: ViewableComponent<PM>,
-            M: ViewableComponent<M>,
+            SelfModel: ViewableComponent<SelfModel>,
     {
         self.inputer = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
-            comp.view_node_mut::<M>()
+            comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
-            let to_parent_messages = Self::send_pass_up::<PM, M, _>(comp, messages);
+            let to_parent_messages = Self::send_pass_up::<PM, SelfModel, _>(comp, messages);
             if let Some(parent_messages) = parent_messages {
                 let parent_messages = parent_messages.as_any_mut().downcast_mut::<Vec<PM::Message>>()
                     .expect("Inputer can't downcast Vec<PM::Message>");
@@ -106,40 +124,40 @@ impl Comp {
         )
     }
 
-    pub fn get_comp<'a, M: Component>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
-        self.view_node::<M>().get_comp(finger)
+    pub fn get_comp<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
+        self.view_node::<SelfModel>().get_comp(finger)
     }
 
-    pub fn get_comp_mut<'a, M: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
-        self.view_node_mut::<M>().get_comp_mut(finger)
+    pub fn get_comp_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
+        self.view_node_mut::<SelfModel>().get_comp_mut(finger)
     }
 
-    pub fn get_prim<'a, M: Component>(&self, finger: Finger<'a>) -> Result<&Prim<M>, GetError<'a>> {
-        self.view_node::<M>().get_prim(finger)
+    pub fn get_prim<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Prim<SelfModel>, GetError<'a>> {
+        self.view_node::<SelfModel>().get_prim(finger)
     }
 
-    pub fn get_prim_mut<'a, M: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<M>, GetError<'a>> {
-        self.view_node_mut::<M>().get_prim_mut(finger)
+    pub fn get_prim_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<SelfModel>, GetError<'a>> {
+        self.view_node_mut::<SelfModel>().get_prim_mut(finger)
     }
 
-    pub fn view_node<M: Component>(&self) -> &Node<M> {
+    pub fn view_node<SelfModel: Component>(&self) -> &Node<SelfModel> {
         let node = self.view_node.as_ref().expect("Can't downcast node - it is None");
-        node.as_any().downcast_ref::<Node<M>>().expect("Can't downcast node")
+        node.as_any().downcast_ref::<Node<SelfModel>>().expect("Can't downcast node")
     }
 
-    pub fn view_node_mut<M: Component>(&mut self) -> &mut Node<M> {
+    pub fn view_node_mut<SelfModel: Component>(&mut self) -> &mut Node<SelfModel> {
         let node = self.view_node.as_mut().expect("Can't downcast node - it is None");
-        node.as_any_mut().downcast_mut::<Node<M>>().expect("Can't downcast node")
+        node.as_any_mut().downcast_mut::<Node<SelfModel>>().expect("Can't downcast node")
     }
 
-    pub fn model<M: Component>(&self) -> &M {
+    pub fn model<SelfModel: Component>(&self) -> &SelfModel {
         let model = self.model.as_ref().expect("Can't downcast model - it is None");
-        model.as_any().downcast_ref::<M>().expect("Can't downcast model")
+        model.as_any().downcast_ref::<SelfModel>().expect("Can't downcast model")
     }
 
-    pub fn model_mut<M: Component>(&mut self) -> &mut M {
+    pub fn model_mut<SelfModel: Component>(&mut self) -> &mut SelfModel {
         let model = self.model.as_mut().expect("Can't downcast model - it is None");
-        model.as_any_mut().downcast_mut::<M>().expect("Can't downcast model")
+        model.as_any_mut().downcast_mut::<SelfModel>().expect("Can't downcast model")
     }
 
     pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn AnyVecMessages>) {
@@ -156,12 +174,13 @@ impl Comp {
         self.modifier.map(|modifier| {
             modifier(self, model.expect("Call `Comp::modify` without model, but modifier is exists"))
         });
-        self.modify_internal();
+        self.modify_content();
     }
 
-    pub fn modify_internal(&mut self) {
-        self.modify_handler.map(|modifier| {
-            modifier(self)
+    #[inline]
+    pub fn modify_content(&mut self) {
+        self.modify_interior_closure.map(|modifier| {
+            modifier(self);
         });
     }
 
@@ -173,41 +192,36 @@ impl Comp {
     }
 
     #[inline]
-    pub fn send_self<M: ViewableComponent<M>>(&mut self, msg: M::Message) {
-        self.send_self_batch::<M, _>(Some(msg));
+    pub fn send_self<SelfModelMessage: ComponentMessage>(&mut self, msg: SelfModelMessage) {
+        self.send_self_batch(vec![msg])
     }
 
-    pub fn send_self_batch<M, MS>(&mut self, msgs: MS)
-        where
-            M: ViewableComponent<M>,
-            MS: IntoIterator<Item = M::Message>,
+    pub fn send_self_batch<Msgs>(&mut self, msgs: Msgs)
+    where
+        Msgs: AnyVecMessages,
     {
-        let mut should_change = ChangeView::None;
-        for msg in msgs.into_iter() {
-            should_change.up(self.model_mut::<M>().update(msg));
-        }
-        self.change_if_necessary::<M>(should_change);
+        self.update_msgs(msgs);
     }
 
     #[inline]
     pub fn send<M, CM>(&mut self, to_child: Finger, msg: CM::Message)
-        where
-            M: ViewableComponent<M>,
-            CM: ViewableComponent<CM>,
+    where
+        M: ViewableComponent<M>,
+        CM: ViewableComponent<CM>,
     {
         self.send_batch::<M, CM, _>(to_child, Some(msg))
     }
 
     pub fn send_batch<M, CM, MS>(&mut self, to_child: Finger, msgs: MS)
-        where
-            M: ViewableComponent<M>,
-            CM: ViewableComponent<CM>,
-            MS: IntoIterator<Item = CM::Message>,
+    where
+        M: ViewableComponent<M>,
+        CM: ViewableComponent<CM>,
+        MS: IntoIterator<Item = CM::Message>,
     {
         let comp = self.get_comp_mut::<M>(to_child)
             .expect("Send batch: Comp not found");
         let parent_msgs = Self::send_pass_up::<M, CM, MS>(comp, msgs);
-        self.update_msgs::<M, _>(parent_msgs);
+        self.update_msgs(parent_msgs);
     }
 
     fn send_pass_up<M, CM, CMS>(comp: &mut Comp, msgs: CMS) -> Vec<M::Message>
@@ -219,7 +233,7 @@ impl Comp {
         let mut parent_msgs = Vec::new();
         for msg in msgs.into_iter() {
             let parent_msg = comp.pass_up::<M>(&msg);
-            comp.send_self::<CM>(msg);
+            comp.send_self(msg);
             if let Some(parent_msg) = parent_msg {
                 parent_msgs.push(parent_msg);
             }
@@ -227,27 +241,39 @@ impl Comp {
         parent_msgs
     }
 
-    fn update_msgs<M, MS>(&mut self, msgs: MS)
-        where
-            M: ViewableComponent<M>,
-            MS: IntoIterator<Item = M::Message>,
+    #[inline]
+    fn update_msgs<Msgs>(&mut self, mut msgs: Msgs)
+    where
+        Msgs: AnyVecMessages,
     {
-        let mut should_change = ChangeView::None;
-        for msg in msgs.into_iter() {
-            should_change.up(self.model_mut::<M>().update(msg));
-        }
-        self.change_if_necessary::<M>(should_change);
+        let updater = self.update_closure.expect("Update closure must be not None");
+        updater(self, &mut msgs);
+    }
+}
+
+impl CompInside for Comp {
+    fn modify_interior<SelfModel>(&mut self)
+    where
+        SelfModel: ViewableComponent<SelfModel>,
+    {
+        let boxed_model = mem::replace(&mut self.model, None)
+            .expect("Can't extract model for modify interior");
+        self.view_node_mut::<SelfModel>().modify(&(*boxed_model));
+        mem::replace(&mut self.model, Some(boxed_model));
     }
 
-    fn change_if_necessary<M: ViewableComponent<M>>(&mut self, should_change: ChangeView) {
+    fn change_view_if_necessary<SelfModel>(&mut self, should_change: ChangeView)
+    where
+        SelfModel: ViewableComponent<SelfModel>,
+    {
         match should_change {
             ChangeView::Rebuild => {
-                let mut new_node = self.model::<M>().view();
+                let mut new_node = self.model::<SelfModel>().view();
                 new_node.resolve(self.cloned_defaults());
                 self.view_node = Some(Box::new(new_node));
             },
             ChangeView::Modify => {
-                self.modify_internal();
+                self.modify_interior::<SelfModel>();
             },
             ChangeView::None => (),
         }
