@@ -18,10 +18,12 @@ pub struct Comp {
     pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
     pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
     pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn AnyVecMessages>)>,
-    pub modify_interior_closure: Option<fn(&mut Comp)>,
     pub modifier: Option<fn(&mut Comp, &dyn AnyModel)>,
     pub pass_up_handler: Option<fn(&dyn AnyMessage) -> Box<dyn AnyMessage>>,
-    pub update_closure: Option<fn(&mut Comp, &mut dyn AnyVecMessages)>,
+    modify_interior_closure: Option<fn(&mut Comp)>,
+    update_closure: Option<fn(&mut Comp, &mut dyn AnyVecMessages)>,
+    get_comp_closure: Option<fn(*const Comp, Finger) -> Result<*const Comp, GetError>>,
+    get_comp_mut_closure: Option<fn(*mut Comp, Finger) -> Result<*mut Comp, GetError>>,
 }
 
 trait CompInside {
@@ -75,15 +77,15 @@ impl Comp {
             comp.view_node_mut::<SelfModel>() as &mut dyn Drawable
         });
 
-        self.modify_interior_closure = Some(|comp: &mut Comp| {
-            comp.modify_interior::<SelfModel>();
-        });
-
         self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
             comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
             comp.update_msgs(messages);
+        });
+
+        self.modify_interior_closure = Some(|comp: &mut Comp| {
+            comp.modify_interior::<SelfModel>();
         });
 
         self.update_closure = Some(|comp: &mut Comp, messages: &mut dyn AnyVecMessages| {
@@ -94,6 +96,16 @@ impl Comp {
                 should_change.up(comp.model_mut::<SelfModel>().update(msg));
             }
             comp.change_view_if_necessary::<SelfModel>(should_change);
+        });
+
+        self.get_comp_closure = Some(|comp: *const Comp, finger: Finger| -> Result<*const Comp, GetError> {
+            unsafe { &*comp }.view_node::<SelfModel>().get_comp(finger)
+                .map(|c| c as *const _)
+        });
+
+        self.get_comp_mut_closure = Some(|comp: *mut Comp, finger: Finger| -> Result<*mut Comp, GetError> {
+            unsafe { &mut *comp }.view_node_mut::<SelfModel>().get_comp_mut(finger)
+                .map(|c| c as *mut _)
         });
     }
 
@@ -124,12 +136,14 @@ impl Comp {
         )
     }
 
-    pub fn get_comp<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
-        self.view_node::<SelfModel>().get_comp(finger)
+    pub fn get_comp<'a>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
+        let getter = self.get_comp_closure.expect("Get comp closure must be not None");
+        getter(self as *const _, finger).map(|p| unsafe { &*p })
     }
 
-    pub fn get_comp_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
-        self.view_node_mut::<SelfModel>().get_comp_mut(finger)
+    pub fn get_comp_mut<'a>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
+        let getter = self.get_comp_mut_closure.expect("Get comp mut closure must be not None");
+        getter(self as *mut _, finger).map(|p| unsafe { &mut *p })
     }
 
     pub fn get_prim<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Prim<SelfModel>, GetError<'a>> {
@@ -218,7 +232,7 @@ impl Comp {
         CM: ViewableComponent<CM>,
         MS: IntoIterator<Item = CM::Message>,
     {
-        let comp = self.get_comp_mut::<M>(to_child)
+        let comp = self.get_comp_mut(to_child)
             .expect("Send batch: Comp not found");
         let parent_msgs = Self::send_pass_up::<M, CM, MS>(comp, msgs);
         self.update_msgs(parent_msgs);
