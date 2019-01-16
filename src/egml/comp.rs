@@ -14,12 +14,12 @@ pub struct Comp {
     pub props: Option<Box<dyn AnyProperties>>,
     pub view_node: Option<Box<dyn AnyNode>>,
     pub defaults: Option<Rc<NodeDefaults>>,
-    pub resolver: Option<fn(&mut Comp) -> ChildrenProcessed>,
-    pub drawer: Option<fn(&Comp) -> &dyn Drawable>,
-    pub drawer_mut: Option<fn(&mut Comp) -> &mut dyn Drawable>,
-    pub inputer: Option<fn(&mut Comp, InputEvent, Option<&mut dyn AnyVecMessages>)>,
     pub modifier: Option<fn(&mut Comp, &dyn AnyModel)>,
     pub pass_up_handler: Option<fn(&dyn AnyMessage) -> Box<dyn AnyMessage>>,
+    as_drawable_closure: Option<fn(&Comp) -> &dyn Drawable>,
+    as_drawable_mut_closure: Option<fn(&mut Comp) -> &mut dyn Drawable>,
+    resolve_closure: Option<fn(&mut Comp) -> ChildrenProcessed>,
+    input_closure: Option<fn(&mut Comp, InputEvent, Option<&mut dyn AnyVecMessages>)>,
     modify_interior_closure: Option<fn(&mut Comp)>,
     update_closure: Option<fn(&mut Comp, &mut dyn AnyVecMessages)>,
     get_comp_closure: Option<fn(*const Comp, Finger) -> Result<*const Comp, GetError>>,
@@ -66,18 +66,21 @@ impl Comp {
         self.model = Some(Box::new(model));
         self.view_node = Some(Box::new(node));
         self.props = Some(Box::new(props));
-        self.resolver = Some(|comp: &mut Comp| {
-            let defaults = comp.cloned_defaults();
-            comp.view_node_mut::<SelfModel>().resolve(defaults)
-        });
-        self.drawer = Some(|comp: &Comp| {
+
+        self.as_drawable_closure = Some(|comp: &Comp| {
             comp.view_node::<SelfModel>() as &dyn Drawable
         });
-        self.drawer_mut = Some(|comp: &mut Comp| {
+
+        self.as_drawable_mut_closure = Some(|comp: &mut Comp| {
             comp.view_node_mut::<SelfModel>() as &mut dyn Drawable
         });
 
-        self.inputer = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn AnyVecMessages>| {
+        self.resolve_closure = Some(|comp: &mut Comp| {
+            let defaults = comp.cloned_defaults();
+            comp.view_node_mut::<SelfModel>().resolve(defaults)
+        });
+
+        self.input_closure = Some(|comp: &mut Comp, event: InputEvent, _parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
             comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
@@ -114,7 +117,7 @@ impl Comp {
             PM: ViewableComponent<PM>,
             SelfModel: ViewableComponent<SelfModel>,
     {
-        self.inputer = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn AnyVecMessages>| {
+        self.input_closure = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
             comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
@@ -127,13 +130,6 @@ impl Comp {
                 }
             }
         });
-    }
-
-    pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
-        self.defaults = defaults;
-        (self.resolver.expect("Can't resolve with uninitialized resolver"))(
-            self
-        )
     }
 
     pub fn get_comp<'a>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
@@ -174,8 +170,14 @@ impl Comp {
         model.as_any_mut().downcast_mut::<SelfModel>().expect("Can't downcast model")
     }
 
+    pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
+        self.defaults = defaults;
+        let resolver = self.resolve_closure.expect("Can't resolve with uninitialized resolver");
+        resolver(self)
+    }
+
     pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn AnyVecMessages>) {
-        self.inputer.map(|inputer| {
+        self.input_closure.map(|inputer| {
             inputer(self, event, messages)
         });
     }
@@ -296,25 +298,23 @@ impl CompInside for Comp {
 
 impl Drawable for Comp {
     fn shape(&self) -> Option<&Shape> {
-        self.drawer.and_then(|drawer| {
-            drawer(self).shape()
-        })
+        let drawable = self.as_drawable_closure?;
+        drawable(self).shape()
     }
 
     fn shape_mut(&mut self) -> Option<&mut Shape> {
-        let drawer = self.drawer_mut?;
-        drawer(self).shape_mut()
+        let drawable = self.as_drawable_mut_closure?;
+        drawable(self).shape_mut()
     }
 
     fn childs(&self) -> Option<DrawableChilds> {
-        self.drawer.and_then(|drawer| {
-            drawer(self).childs()
-        })
+        let drawable = self.as_drawable_closure?;
+        drawable(self).childs()
     }
 
     fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
-        let drawer = self.drawer_mut?;
-        drawer(self).childs_mut()
+        let drawable = self.as_drawable_mut_closure?;
+        drawable(self).childs_mut()
     }
 }
 
