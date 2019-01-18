@@ -151,8 +151,36 @@ impl<M: Component> AnyModel for M {}
 pub trait AnyMessage: AsAny {}
 impl<M: ComponentMessage> AnyMessage for M {}
 
-pub trait AnyVecMessages: AsAny {}
-impl<M: ComponentMessage> AnyVecMessages for Vec<M> {}
+pub trait AnyVecMessages: AsAny {
+    fn get_msg(&self, i: usize) -> Option<&dyn AnyMessage>;
+    fn msg_iter(&self) -> MsgIter;
+}
+impl<M: ComponentMessage> AnyVecMessages for Vec<M> {
+    fn get_msg(&self, i: usize) -> Option<&dyn AnyMessage> {
+        self.get(i).map(|msg| msg as _)
+    }
+
+    fn msg_iter(&self) -> MsgIter {
+        MsgIter {
+            idx: 0,
+            vec: self,
+        }
+    }
+}
+
+pub struct MsgIter<'a> {
+    idx: usize,
+    vec: &'a dyn AnyVecMessages,
+}
+
+impl<'a> Iterator for MsgIter<'a> {
+    type Item = &'a dyn AnyMessage;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.idx += 1;
+        self.vec.get_msg(self.idx - 1)
+    }
+}
 
 pub trait AnyProperties: AsAny {}
 impl<P: ComponentProperties> AnyProperties for P {}

@@ -31,6 +31,13 @@ pub enum GetError<'a> {
     LinkToCompInsteadOfPrim {
         tail: &'a [usize]
     },
+    LinkToPrimInsteadOfComp {
+        tail: &'a [usize]
+    },
+    TopCompMustHaveZeroIdx {
+        idx: usize,
+        tail: &'a [usize]
+    },
     NotFound,
 }
 
