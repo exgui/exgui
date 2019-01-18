@@ -49,11 +49,8 @@ trait CompInside {
 }
 
 impl Comp {
-    pub fn id(&self) -> Option<&str> {
-        self.id.as_ref().map(|s| s.as_str())
-    }
-
     /// This method prepares a generator to make a new instance of the `Component`.
+    #[inline]
     pub fn lazy<SelfModel>() -> (SelfModel::Properties, Self)
     where
         SelfModel: ViewableComponent<SelfModel>,
@@ -159,26 +156,36 @@ impl Comp {
         });
     }
 
+    #[inline]
+    pub fn id(&self) -> Option<&str> {
+        self.id.as_ref().map(|s| s.as_str())
+    }
+
+    #[inline]
     pub fn get_comp<'a>(&self, finger: Finger<'a>) -> Result<&Comp, GetError<'a>> {
         let getter = self.get_comp_closure
             .expect("Get comp closure must be not None");
         getter(self, finger)
     }
 
+    #[inline]
     pub fn get_comp_mut<'a>(&mut self, finger: Finger<'a>) -> Result<&mut Comp, GetError<'a>> {
         let getter = self.get_comp_mut_closure
             .expect("Get comp mut closure must be not None");
         getter(self, finger)
     }
 
+    #[inline]
     pub fn get_prim<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Prim<SelfModel>, GetError<'a>> {
         self.view_node::<SelfModel>().get_prim(finger)
     }
 
+    #[inline]
     pub fn get_prim_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<SelfModel>, GetError<'a>> {
         self.view_node_mut::<SelfModel>().get_prim_mut(finger)
     }
 
+    #[inline]
     pub fn view_node<SelfModel: Component>(&self) -> &Node<SelfModel> {
         let node = self.view_node.as_ref()
             .expect("Can't downcast node - it is None");
@@ -186,6 +193,7 @@ impl Comp {
             .expect("Can't downcast node")
     }
 
+    #[inline]
     pub fn view_node_mut<SelfModel: Component>(&mut self) -> &mut Node<SelfModel> {
         let node = self.view_node.as_mut()
             .expect("Can't downcast node - it is None");
@@ -193,6 +201,7 @@ impl Comp {
             .expect("Can't downcast node")
     }
 
+    #[inline]
     pub fn model<SelfModel: Component>(&self) -> &SelfModel {
         let model = self.model.as_ref()
             .expect("Can't downcast model - it is None");
@@ -200,6 +209,7 @@ impl Comp {
             .expect("Can't downcast model")
     }
 
+    #[inline]
     pub fn model_mut<SelfModel: Component>(&mut self) -> &mut SelfModel {
         let model = self.model.as_mut()
             .expect("Can't downcast model - it is None");
@@ -207,6 +217,12 @@ impl Comp {
             .expect("Can't downcast model")
     }
 
+    #[inline]
+    pub fn cloned_defaults(&self) -> Option<Rc<NodeDefaults>> {
+        self.defaults.as_ref().map(|d| Rc::clone(d))
+    }
+
+    #[inline]
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         self.defaults = defaults;
         let resolver = self.resolve_closure
@@ -214,14 +230,11 @@ impl Comp {
         resolver(self)
     }
 
+    #[inline]
     pub fn input(&mut self, event: InputEvent, messages: Option<&mut dyn AnyVecMessages>) {
         self.input_closure.map(|inputer| {
             inputer(self, event, messages)
         });
-    }
-
-    pub fn cloned_defaults(&self) -> Option<Rc<NodeDefaults>> {
-        self.defaults.as_ref().map(|d| Rc::clone(d))
     }
 
     pub fn modify(&mut self, model: Option<&dyn AnyModel>) {
@@ -238,6 +251,7 @@ impl Comp {
         });
     }
 
+    #[inline]
     pub fn pass_up<ParentModel: Component>(&mut self, msg: &dyn AnyMessage) -> Option<ParentModel::Message> {
         self.pass_up_handler.map(|pass_up_handler| {
             *pass_up_handler(msg).into_any().downcast::<ParentModel::Message>()
@@ -250,6 +264,7 @@ impl Comp {
         self.send_self_batch(vec![msg])
     }
 
+    #[inline]
     pub fn send_self_batch<SelfModelMessages>(&mut self, mut msgs: SelfModelMessages)
     where
         SelfModelMessages: AnyVecMessages,
@@ -266,6 +281,7 @@ impl Comp {
         self.send_batch::<_>(to_child, vec![msg])
     }
 
+    #[inline]
     pub fn send_batch<'a, TargetModelMessages>(&mut self, to_child: Finger<'a>, mut msgs: TargetModelMessages)
         -> Result<Option<Box<dyn AnyVecMessages>>, GetError<'a>>
     where
@@ -440,21 +456,25 @@ impl CompInside for Comp {
 }
 
 impl Drawable for Comp {
+    #[inline]
     fn shape(&self) -> Option<&Shape> {
         let drawable = self.as_drawable_closure?;
         drawable(self).shape()
     }
 
+    #[inline]
     fn shape_mut(&mut self) -> Option<&mut Shape> {
         let drawable = self.as_drawable_mut_closure?;
         drawable(self).shape_mut()
     }
 
+    #[inline]
     fn childs(&self) -> Option<DrawableChilds> {
         let drawable = self.as_drawable_closure?;
         drawable(self).childs()
     }
 
+    #[inline]
     fn childs_mut(&mut self) -> Option<DrawableChildsMut> {
         let drawable = self.as_drawable_mut_closure?;
         drawable(self).childs_mut()
@@ -468,46 +488,51 @@ pub trait Transformer<M: Component, FROM, TO> {
 }
 
 impl<M, T> Transformer<M, T, T> for Comp
-    where
-        M: Component,
+where
+    M: Component,
 {
+    #[inline]
     fn transform(&mut self, from: T) -> T {
         from
     }
 }
 
 impl<'a, M, T> Transformer<M, &'a T, T> for Comp
-    where
-        M: Component,
-        T: Clone,
+where
+    M: Component,
+    T: Clone,
 {
+    #[inline]
     fn transform(&mut self, from: &'a T) -> T {
         from.clone()
     }
 }
 
 impl<M, T> Transformer<M, T, Option<T>> for Comp
-    where
-        M: Component,
+where
+    M: Component,
 {
+    #[inline]
     fn transform(&mut self, from: T) -> Option<T> {
         Some(from)
     }
 }
 
 impl<'a, M> Transformer<M, &'a str, String> for Comp
-    where
-        M: Component,
+where
+    M: Component,
 {
+    #[inline]
     fn transform(&mut self, from: &'a str) -> String {
         from.to_owned()
     }
 }
 
 impl<'a, M> Transformer<M, &'a str, Option<String>> for Comp
-    where
-        M: Component,
+where
+    M: Component,
 {
+    #[inline]
     fn transform(&mut self, from: &'a str) -> Option<String> {
         Some(from.to_owned())
     }
