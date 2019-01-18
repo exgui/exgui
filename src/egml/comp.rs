@@ -37,11 +37,11 @@ trait CompInside {
     where
         SelfModel: ViewableComponent<SelfModel>;
 
-    fn update<SelfModel>(&mut self, msgs: &mut Vec<SelfModel::Message>)
+    fn update_msgs<SelfModel>(&mut self, msgs: &mut Vec<SelfModel::Message>)
     where
         SelfModel: ViewableComponent<SelfModel>;
 
-    fn update_and_pass_up<ParentModel, SelfModel>(&mut self, messages: &mut dyn AnyVecMessages)
+    fn update_and_pass_up<ParentModel, SelfModel>(&mut self, messages: &mut Vec<SelfModel::Message>)
         -> Option<Vec<ParentModel::Message>>
     where
         ParentModel: ViewableComponent<ParentModel>,
@@ -98,7 +98,7 @@ impl Comp {
             let mut messages = Vec::new();
             comp.view_node_mut::<SelfModel>()
                 .input(event, &mut messages);
-            comp.update_msgs(&mut messages);
+            comp.update_msgs::<SelfModel>(&mut messages);
         });
 
         self.modify_interior_closure = Some(|comp: &mut Comp| {
@@ -108,11 +108,7 @@ impl Comp {
         self.update_closure = Some(|comp: &mut Comp, messages: &mut dyn AnyVecMessages| {
             let messages = messages.as_any_mut().downcast_mut::<Vec<SelfModel::Message>>()
                 .expect("Can't downcast AnyVecMessages to Vec<Message> for update");
-            let mut should_change = ChangeView::None;
-            for msg in messages.drain(..) {
-                should_change.up(comp.model_mut::<SelfModel>().update(msg));
-            }
-            comp.change_view_if_necessary::<SelfModel>(should_change);
+            comp.update_msgs::<SelfModel>(messages);
         });
 
         self.get_comp_closure = Some(|comp: &Comp, finger: Finger| {
@@ -125,7 +121,7 @@ impl Comp {
 
         self.send_batch_in_depth_closure = Some(|comp: &mut Comp, finger: Finger, messages: &mut dyn AnyVecMessages| {
             comp.send_batch_in_depth::<SelfModel, _>(finger, messages, |comp, msgs| {
-                comp.update_msgs(msgs);
+                comp.update(msgs);
                 None
             })
         });
@@ -138,20 +134,25 @@ impl Comp {
     {
         self.input_closure = Some(|comp: &mut Comp, event: InputEvent, parent_messages: Option<&mut dyn AnyVecMessages>| {
             let mut messages = Vec::new();
-            comp.view_node_mut::<SelfModel>()
-                .input(event, &mut messages);
-            let to_parent_messages = Self::send_pass_up::<ParentModel, SelfModel, _>(comp, messages);
-            if let Some(parent_messages) = parent_messages {
-                let parent_messages = parent_messages.as_any_mut().downcast_mut::<Vec<ParentModel::Message>>()
-                    .expect("Inputer can't downcast Vec<PM::Message>");
-                for msg in to_parent_messages.into_iter() {
-                    parent_messages.push(msg);
+            comp.view_node_mut::<SelfModel>().input(event, &mut messages);
+            let to_parent_messages = comp.update_and_pass_up::<ParentModel, SelfModel>(&mut messages);
+
+            if let Some(to_parent_messages) = to_parent_messages {
+                if let Some(parent_messages) = parent_messages {
+                    let parent_messages = parent_messages.as_any_mut().downcast_mut::<Vec<ParentModel::Message>>()
+                        .expect("Inputer can't downcast parent messages to Vec<Message>");
+
+                    for msg in to_parent_messages.into_iter() {
+                        parent_messages.push(msg);
+                    }
                 }
             }
         });
 
         self.send_batch_in_depth_closure = Some(|comp: &mut Comp, finger: Finger, messages: &mut dyn AnyVecMessages| {
             comp.send_batch_in_depth::<SelfModel, _>(finger, messages, |comp, msgs| {
+                let msgs = msgs.as_any_mut().downcast_mut::<Vec<SelfModel::Message>>()
+                    .expect("Can't downcast messages for update and pass up");
                 comp.update_and_pass_up::<ParentModel, SelfModel>(msgs)
                     .map(|vec| Box::new(vec) as Box<dyn AnyVecMessages>)
             })
@@ -253,7 +254,7 @@ impl Comp {
     where
         SelfModelMessages: AnyVecMessages,
     {
-        self.update_msgs(&mut msgs);
+        self.update(&mut msgs);
     }
 
     #[inline]
@@ -273,6 +274,7 @@ impl Comp {
         self.send_batch_dyn(to_child, &mut msgs)
     }
 
+    #[inline]
     fn send_batch_dyn<'a>(&mut self, finger: Finger<'a>, msgs: &mut dyn AnyVecMessages)
         -> Result<Option<Box<dyn AnyVecMessages>>, GetError<'a>>
     {
@@ -365,25 +367,8 @@ impl Comp {
         }
     }
 
-    fn send_pass_up<M, CM, CMS>(comp: &mut Comp, msgs: CMS) -> Vec<M::Message>
-    where
-        M: ViewableComponent<M>,
-        CM: ViewableComponent<CM>,
-        CMS: IntoIterator<Item = CM::Message>,
-    {
-        let mut parent_msgs = Vec::new();
-        for msg in msgs.into_iter() {
-            let parent_msg = comp.pass_up::<M>(&msg);
-            comp.send_self(msg);
-            if let Some(parent_msg) = parent_msg {
-                parent_msgs.push(parent_msg);
-            }
-        }
-        parent_msgs
-    }
-
     #[inline]
-    fn update_msgs(&mut self, msgs: &mut dyn AnyVecMessages) {
+    fn update(&mut self, msgs: &mut dyn AnyVecMessages) {
         let updater = self.update_closure
             .expect("Update closure must be not None");
         updater(self, msgs);
@@ -391,6 +376,7 @@ impl Comp {
 }
 
 impl CompInside for Comp {
+    #[inline]
     fn modify_interior<SelfModel>(&mut self)
     where
         SelfModel: ViewableComponent<SelfModel>,
@@ -418,7 +404,8 @@ impl CompInside for Comp {
         }
     }
 
-    fn update<SelfModel>(&mut self, messages: &mut Vec<SelfModel::Message>)
+    #[inline]
+    fn update_msgs<SelfModel>(&mut self, messages: &mut Vec<SelfModel::Message>)
     where
         SelfModel: ViewableComponent<SelfModel>,
     {
@@ -429,14 +416,12 @@ impl CompInside for Comp {
         self.change_view_if_necessary::<SelfModel>(should_change);
     }
 
-    fn update_and_pass_up<ParentModel, SelfModel>(&mut self, messages: &mut dyn AnyVecMessages)
+    fn update_and_pass_up<ParentModel, SelfModel>(&mut self, messages: &mut Vec<SelfModel::Message>)
         -> Option<Vec<ParentModel::Message>>
     where
         ParentModel: ViewableComponent<ParentModel>,
         SelfModel: ViewableComponent<SelfModel>,
     {
-        let messages = messages.as_any_mut().downcast_mut::<Vec<SelfModel::Message>>()
-            .expect("Can't downcast messages for update and pass up");
         let mut parent_msgs = Vec::new();
         for msg in messages.iter() {
             let parent_msg = self.pass_up::<ParentModel>(msg);
@@ -444,7 +429,7 @@ impl CompInside for Comp {
                 parent_msgs.push(parent_msg);
             }
         }
-        self.update::<SelfModel>(messages);
+        self.update_msgs::<SelfModel>(messages);
 
         if !parent_msgs.is_empty() {
             Some(parent_msgs)
