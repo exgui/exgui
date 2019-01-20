@@ -205,7 +205,7 @@ macro_rules! egml_impl {
 //        $crate::egml_impl! { @prim $state ($($tail)*) }
 //    };
     (@prim $state:ident $shape:ident ($attr:ident = $val:expr, $($tail:tt)*)) => {
-        set_attr!($state, $shape.$attr = $crate::egml::Converter::convert($val));
+        $crate::set_attr!($state, $shape.$attr = $crate::egml::Converter::convert($val));
         $crate::egml_impl! { @prim $state $shape ($($tail)*) }
     };
     // End of openging tag
@@ -256,7 +256,7 @@ macro_rules! egml_impl {
         $crate::egml_impl! { $state ($($tail)*) }
     };
     ($state:ident $shape:ident ($for_child:expr, modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
-        set_child_attr!($state, $for_child, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn $crate::egml::AnyModel| {
+        $crate::set_child_attr!($state, $for_child, $shape.modifier = Some(move |$this: &mut $crate::egml::macros::$shape, $model: &dyn $crate::egml::AnyModel| {
             let $model = $model.as_any().downcast_ref::<$cm>()
                 .expect(concat!("Modifier of ", stringify!($shape), " can't downcast model to ", stringify!($cm)));
             $handler
@@ -284,7 +284,7 @@ macro_rules! egml {
 #[macro_export]
 macro_rules! set_attr {
     ($state:ident, $shape:ident.$attr:ident = $val:expr) => {
-        set_child_attr!($state, false, $shape.$attr = $val);
+        $crate::set_child_attr!($state, false, $shape.$attr = $val);
     };
 }
 
