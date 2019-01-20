@@ -176,12 +176,16 @@ impl Comp {
     }
 
     #[inline]
-    pub fn get_prim<'a, SelfModel: Component>(&self, finger: Finger<'a>) -> Result<&Prim<SelfModel>, GetError<'a>> {
+    pub fn get_prim<'a, SelfModel: Component>(&self, finger: Finger<'a>)
+        -> Result<&Prim<SelfModel>, GetError<'a>>
+    {
         self.view_node::<SelfModel>().get_prim(finger)
     }
 
     #[inline]
-    pub fn get_prim_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>) -> Result<&mut Prim<SelfModel>, GetError<'a>> {
+    pub fn get_prim_mut<'a, SelfModel: Component>(&mut self, finger: Finger<'a>)
+        -> Result<&mut Prim<SelfModel>, GetError<'a>>
+    {
         self.view_node_mut::<SelfModel>().get_prim_mut(finger)
     }
 
