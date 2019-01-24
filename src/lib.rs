@@ -1,12 +1,5 @@
 pub mod egml;
 pub mod controller;
+pub mod renderer;
 
 pub use self::egml::*;
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
-}

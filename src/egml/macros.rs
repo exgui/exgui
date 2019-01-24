@@ -31,6 +31,9 @@ macro_rules! egml_impl {
         ($pair.1).id = $crate::egml::Converter::convert($val);
         $crate::egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
+    (@comp $state:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident | $handler:expr, $($tail:tt)*)) => {
+        $crate::egml_impl! { @comp $state $comp, $pair (modifier = | $this, $model : $comp | $handler, $($tail)*) }
+    };
     (@comp $state:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident : $pcm:ty | $handler:expr, $($tail:tt)*)) => {
         ($pair.1).modifier = Some(move |$this: &mut $crate::egml::Comp, $model: &dyn $crate::egml::AnyModel| {
             let $model = $model.as_any().downcast_ref::<$pcm>()

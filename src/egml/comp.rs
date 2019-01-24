@@ -190,6 +190,18 @@ impl Comp {
     }
 
     #[inline]
+    pub fn view_node_as_drawable(&self) -> Option<&dyn Drawable> {
+        let drawable = self.as_drawable_closure?;
+        Some(drawable(self))
+    }
+
+    #[inline]
+    pub fn view_node_as_drawable_mut(&mut self) -> Option<&mut dyn Drawable> {
+        let drawable = self.as_drawable_mut_closure?;
+        Some(drawable(self))
+    }
+
+    #[inline]
     pub fn view_node<SelfModel: Component>(&self) -> &Node<SelfModel> {
         let node = self.view_node.as_ref()
             .expect("Can't downcast node - it is None");
