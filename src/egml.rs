@@ -81,6 +81,9 @@ pub trait Component: Sized + 'static {
 
     /// Called for finalization on the final point of the component's lifetime.
     fn destroy(&mut self) { } // TODO Replace with `Drop`
+
+    /// Called by rendering loop.
+    fn view(&self) -> Node<Self>;
 }
 
 pub trait ComponentMessage: Clone + 'static {}
@@ -88,15 +91,6 @@ impl<T: Clone + 'static> ComponentMessage for T {}
 
 pub trait ComponentProperties: Clone + PartialEq + Default + 'static {}
 impl<T: Clone + PartialEq + Default + 'static> ComponentProperties for T {}
-
-/// Should be viewed relative to context and component environment.
-pub trait Viewable<M: Component> {
-    /// Called by rendering loop.
-    fn view(&self) -> Node<M>;
-}
-
-pub trait ViewableComponent<M: Component>: Component + Viewable<M> {}
-impl<T: Component + Viewable<T>> ViewableComponent<T> for T {}
 
 pub type DrawableChilds<'a> = Box<dyn Iterator<Item=&'a dyn Drawable> + 'a>;
 pub type DrawableChildsMut<'a> = Box<dyn Iterator<Item=&'a mut dyn Drawable> + 'a>;
@@ -215,7 +209,7 @@ pub mod event {
 
     pub mod listener {
         use super::*;
-        use crate::egml::{Listener, Viewable, Component};
+        use crate::egml::{Listener, Component};
 
         pub struct ClickListener<F, MSG>(pub F)
             where F: Fn(ClickEvent) -> MSG + 'static;
@@ -223,7 +217,7 @@ pub mod event {
         impl<T, M> Listener<M> for ClickListener<T, <M as Component>::Message>
             where
                 T: Fn(ClickEvent) -> <M as Component>::Message + 'static,
-                M: Component + Viewable<M>,
+                M: Component,
         {
             fn kind(&self) -> &'static str {
                 stringify!(ClickEvent)
@@ -264,9 +258,7 @@ mod tests {
         fn update(&mut self, _msg: <Self as Component>::Message) -> ChangeView {
             unimplemented!()
         }
-    }
 
-    impl Viewable<Model> for Model {
         fn view(&self) -> Node<Self> {
             let mut rect = Prim::new(
                 "rect",

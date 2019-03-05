@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 use crate::egml::{
-    Component, Viewable, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
+    Component, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
     Node, NodeDefaults, Shape, Shapeable, Listener, ChildrenProcessed, Transform,
     shape::*, event::{Event, ClickEvent}
 };
@@ -95,9 +95,7 @@ impl<M: Component> Prim<M> {
             Shape::Group(_) => {},
         }
     }
-}
 
-impl<M: Component + Viewable<M>> Prim<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self.shape {
             Shape::Rect(ref mut r) => {

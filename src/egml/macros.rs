@@ -2,7 +2,7 @@
 //! and JSX-like templates.
 #![allow(non_camel_case_types, dead_code)]
 
-use crate::egml::{Component, ViewableComponent, Node, Comp, Rect, Circle, Path, Group, Text, Word, Listener};
+use crate::egml::{Component, Node, Comp, Rect, Circle, Path, Group, Text, Word, Listener};
 
 #[macro_export]
 macro_rules! egml_impl {
@@ -28,7 +28,7 @@ macro_rules! egml_impl {
         $crate::egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
     (@comp $state:ident $comp:ty, $pair:ident (id = $val:expr, $($tail:tt)*)) => {
-        ($pair.1).id = $crate::egml::Converter::convert($val);
+        ($pair.1).inner_mut::<$comp>().id = $crate::egml::Converter::convert($val);
         $crate::egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
     (@comp $state:ident $comp:ty, $pair:ident (modifier = | $this:pat, $model:ident | $handler:expr, $($tail:tt)*)) => {
@@ -43,7 +43,7 @@ macro_rules! egml_impl {
         $crate::egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
     (@comp $state:ident $comp:ty, $pair:ident (pass_up = | $msg:ident | $handler:expr, $($tail:tt)*)) => {
-        ($pair.1).pass_up_handler = Some(move |$msg: &dyn $crate::egml::AnyMessage| {
+        ($pair.1).inner_mut::<$comp>().pass_up_handler = Some(move |$msg: &dyn $crate::egml::AnyMessage| {
             let $msg = $msg.as_any().downcast_ref::<<$comp as $crate::egml::Component>::Message>()
                 .expect(concat!("Pass up handler of ", stringify!($comp), " can't downcast msg to ", stringify!($comp::Message)))
                 .clone();
@@ -63,7 +63,7 @@ macro_rules! egml_impl {
     // Self-closing of tag
     (@comp $state:ident $comp:ty, $pair:ident (/ > $($tail:tt)*)) => {
         let (props, mut comp) = $pair;
-        comp.init::<$comp>(props);
+        comp.inner_mut::<$comp>().init(props);
         $state.init_inner_comp::<$comp>(&mut comp);
         $state.stack.push(comp.into());
         $crate::egml::macros::child_to_parent(&mut $state.stack, None);
@@ -325,9 +325,9 @@ pub struct State<M: Component> {
     pub stack: Stack<M>,
 }
 
-impl<M: ViewableComponent<M>> State<M> {
-    pub fn init_inner_comp<CM: ViewableComponent<CM>>(&self, comp: &mut Comp) {
-        comp.init_viewable::<M, CM>();
+impl<M: Component> State<M> {
+    pub fn init_inner_comp<CM: Component>(&self, comp: &mut Comp) {
+        comp.inner_mut::<CM>().init_as_child::<M>();
     }
 }
 
@@ -468,7 +468,7 @@ pub fn child_to_parent<MC: Component>(stack: &mut Stack<MC>, endtag: Option<&'st
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::egml::{self, Viewable, Shapeable, Color, ChangeView};
+    use crate::egml::{self, Shapeable, Color, ChangeView};
 
     struct Model {
         val: f32,
@@ -494,9 +494,7 @@ mod tests {
                 Msg::InnerToggle(_) => ChangeView::None,
             }
         }
-    }
 
-    impl Viewable<Model> for Model {
         fn view(&self) -> Node<Self> {
             egml! {
                 <rect />
@@ -517,20 +515,18 @@ mod tests {
         type Message = InnerMsg;
         type Properties = ();
 
+        fn create(_props: &Self::Properties) -> Self {
+            InnerModel {
+                val: false,
+            }
+        }
+
         fn update(&mut self, msg: Self::Message) -> ChangeView {
             match msg {
                 InnerMsg::Toggle(_) => ChangeView::None,
             }
         }
 
-        fn create(_props: &Self::Properties) -> Self {
-            InnerModel {
-                val: false,
-            }
-        }
-    }
-
-    impl Viewable<InnerModel> for InnerModel {
         fn view(&self) -> Node<Self> {
             egml! {
                 <rect />
