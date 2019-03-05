@@ -1,7 +1,7 @@
 use std::fmt::{self, Pointer};
 use std::rc::Rc;
 use crate::egml::{
-    Component, Viewable, ViewableComponent, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
+    Component, Drawable, DrawableChilds, DrawableChildsMut, AnyModel,
     AnyVecMessages, Prim, Comp, Shape, Word, Fill, Stroke, Translate, Finger, ChangeView,
 };
 use crate::controller::InputEvent;
@@ -268,7 +268,7 @@ impl<M: Component> Node<M> {
 
 pub type ChildrenProcessed = bool;
 
-impl<M: ViewableComponent<M>> Node<M> {
+impl<M: Component> Node<M> {
     pub fn resolve(&mut self, defaults: Option<Rc<NodeDefaults>>) -> ChildrenProcessed {
         match self {
             Node::Prim(ref mut prim) => {
@@ -377,12 +377,6 @@ impl<M: Component, T: ToString> From<T> for Node<M> {
         Node::Prim(Prim::new("text", Shape::Word(
             Word { content: value.to_string(), ..Default::default() }
         )))
-    }
-}
-
-impl<'a, M: Component> From<&'a dyn Viewable<M>> for Node<M> {
-    fn from(value: &'a dyn Viewable<M>) -> Self {
-        value.view()
     }
 }
 
