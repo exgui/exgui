@@ -72,7 +72,13 @@ pub trait Component: Sized + 'static {
 
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
-    fn update(&mut self, msg: Self::Message) -> ChangeView;
+    fn update_with_view(&mut self, _view: Option<&Node<Self>>, msg: Self::Message) -> ChangeView {
+        self.update(msg)
+    }
+
+    fn update(&mut self, _msg: Self::Message) -> ChangeView {
+        unimplemented!("you should implement `update` or `update_with_view` method for a component")
+    }
 
     /// This method called when properties changes, and once when component created.
     fn change(&mut self, _: Self::Properties) -> ChangeView {

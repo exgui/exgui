@@ -236,7 +236,7 @@ impl<SelfModel: Component> CompApi for CompInner<SelfModel> {
     fn modify_content(&mut self) {
         let model = self.model.take()
             .expect("Can't extract model for modify content");
-        self.view_node_mut().modify(&model as &dyn AnyModel);
+        self.modify_view(&model);
         self.model.replace(model);
     }
 
@@ -459,27 +459,35 @@ impl<SelfModel: Component> CompInner<SelfModel> {
             .expect("CompInner view node mut is None")
     }
 
-    fn change_view_if_necessary(&mut self, should_change: ChangeView) {
+    fn change_view_if_necessary(&mut self, should_change: ChangeView, model: &SelfModel) {
         match should_change {
             ChangeView::Rebuild => {
-                let mut new_node = self.model().view();
+                let mut new_node = model.view();
                 new_node.resolve(self.cloned_defaults());
                 self.view_node = Some(new_node);
             },
             ChangeView::Modify => {
-                self.modify_content();
+                self.modify_view(model);
             },
             ChangeView::None => (),
         }
     }
 
     #[inline]
+    fn modify_view(&mut self, model: &SelfModel) {
+        self.view_node_mut().modify(model as &dyn AnyModel);
+    }
+
+    #[inline]
     fn update_msgs(&mut self, messages: &mut Vec<SelfModel::Message>) {
         let mut should_change = ChangeView::None;
+        let mut model = self.model.take()
+            .expect("Can't extract model for update msgs");
         for msg in messages.drain(..) {
-            should_change.up(self.model_mut().update(msg));
+            should_change.up(model.update_with_view(self.view_node.as_ref(), msg));
         }
-        self.change_view_if_necessary(should_change);
+        self.change_view_if_necessary(should_change, &model);
+        self.model.replace(model);
     }
 
     fn update_and_pass_up<ParentModel: Component>(&mut self, messages: &mut Vec<SelfModel::Message>)

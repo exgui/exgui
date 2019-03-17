@@ -311,7 +311,7 @@ impl<M: Component> Node<M> {
     {
         let mut should_change = ChangeView::None;
         for msg in msgs.into_iter() {
-            should_change.up(model.update(msg));
+            should_change.up(model.update_with_view(Some(self), msg));
         }
         match should_change {
             ChangeView::Rebuild => {
