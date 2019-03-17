@@ -23,6 +23,7 @@ pub enum Finger<'a> {
     Id(&'a str),
     Location(&'a [usize]),
     Root,
+    All,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -56,6 +57,11 @@ impl ChangeView {
 
 pub type ShouldChangeView = bool;
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum SystemMessage {
+    FrameChange,
+}
+
 /// An interface of a UI-component. Uses `self` as a model.
 pub trait Component: Sized + 'static {
     /// Control message type which `update` loop get.
@@ -69,6 +75,10 @@ pub trait Component: Sized + 'static {
 
     /// Initialization routine which could use a context.
     fn create(props: &Self::Properties/*, link: ComponentLink<Self>*/) -> Self;
+
+    fn system_update(&mut self, _msg: SystemMessage) -> Option<Self::Message> {
+        None
+    }
 
     /// Called everytime when a messages of `Msg` type received. It also takes a
     /// reference to a context.
@@ -154,6 +164,7 @@ impl<M: ComponentMessage> AnyMessage for M {}
 pub trait AnyVecMessages: AsAny {
     fn get_msg(&self, i: usize) -> Option<&dyn AnyMessage>;
     fn msg_iter(&self) -> MsgIter;
+    fn append(&mut self, other: &mut dyn AnyVecMessages);
 }
 impl<M: ComponentMessage> AnyVecMessages for Vec<M> {
     fn get_msg(&self, i: usize) -> Option<&dyn AnyMessage> {
@@ -165,6 +176,12 @@ impl<M: ComponentMessage> AnyVecMessages for Vec<M> {
             idx: 0,
             vec: self,
         }
+    }
+
+    fn append(&mut self, other: &mut AnyVecMessages) {
+        let vec = other.as_any_mut().downcast_mut::<Vec<M>>()
+            .expect("Can't append any other collection to Vec");
+        self.append(vec);
     }
 }
 

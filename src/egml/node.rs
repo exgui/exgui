@@ -39,6 +39,7 @@ pub enum GetError<'a> {
         tail: &'a [usize]
     },
     NotFound,
+    WrongFinger,
 }
 
 impl<M: Component> Node<M> {
@@ -123,6 +124,7 @@ impl<M: Component> Node<M> {
                     }
                 }
             },
+            Finger::All => Err(GetError::WrongFinger),
         }
     }
 
@@ -168,6 +170,7 @@ impl<M: Component> Node<M> {
                     }
                 }
             },
+            Finger::All => Err(GetError::WrongFinger),
         }
     }
 
@@ -215,6 +218,7 @@ impl<M: Component> Node<M> {
                     Node::Comp(_) => Err(not_found),
                 }
             },
+            Finger::All => Err(GetError::WrongFinger),
         }
     }
 
@@ -262,6 +266,7 @@ impl<M: Component> Node<M> {
                     Node::Comp(_) => Err(not_found),
                 }
             },
+            Finger::All => Err(GetError::WrongFinger),
         }
     }
 }

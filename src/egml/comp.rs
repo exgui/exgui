@@ -1,7 +1,7 @@
 use std::rc::Rc;
 use std::ops::{Deref, DerefMut};
 use crate::egml::{
-    Component, ComponentMessage, Drawable, DrawableChilds, DrawableChildsMut,
+    Component, ComponentMessage, SystemMessage, Drawable, DrawableChilds, DrawableChildsMut,
     AsAny, AnyModel, AnyMessage, AnyVecMessages, Node, NodeDefaults, Prim, Shape, Finger,
     ChangeView, ChildrenProcessed, GetError
 };
@@ -79,7 +79,7 @@ impl Comp {
 
     #[inline]
     pub fn send_self<SelfModelMessage: ComponentMessage>(&mut self, msg: SelfModelMessage) {
-        self.send_self_batch(vec![msg])
+        self.send_self_batch(vec![msg]);
     }
 
     #[inline]
@@ -164,6 +164,7 @@ pub trait CompApi: AsAny {
     fn modify_content(&mut self);
     fn view_node_as_drawable(&self) -> Option<&dyn Drawable>;
     fn view_node_as_drawable_mut(&mut self) -> Option<&mut dyn Drawable>;
+    fn send_system(&mut self, msg: SystemMessage);
     fn send_batch_dyn<'a>(&mut self, finger: Finger<'a>, msgs: &mut dyn AnyVecMessages)
         -> Result<Option<Box<dyn AnyVecMessages>>, GetError<'a>>;
 }
@@ -248,6 +249,11 @@ impl<SelfModel: Component> CompApi for CompInner<SelfModel> {
     #[inline]
     fn view_node_as_drawable_mut(&mut self) -> Option<&mut dyn Drawable> {
         self.view_node.as_mut().map(|node| node as &mut dyn Drawable)
+    }
+
+    fn send_system(&mut self, msg: SystemMessage) {
+        self.send_batch_dyn(Finger::All, &mut vec![msg] as &mut dyn AnyVecMessages)
+            .expect("Error when send SystemMessage");
     }
 
     #[inline]
@@ -427,6 +433,38 @@ impl<SelfModel: Component> CompInner<SelfModel> {
                         Err(not_found)
                     }
                 }
+            },
+            Finger::All => {
+                let mut msgs = Vec::new();
+
+                let system_messages = messages.as_any_mut().downcast_mut::<Vec<SystemMessage>>()
+                    .expect("Can't downcast AnyVecMessages to Vec<SystemMessage> for system update");
+                for &msg in system_messages.iter() {
+                    self.model_mut().system_update(msg)
+                        .map(|msg| msgs.push(msg));
+                }
+
+                match self.view_node_mut() {
+                    Node::Prim(prim) => {
+                        for child in prim.childs.iter_mut() {
+                            if let Some(child_comp) = child.comp_mut() {
+                                let opt_pass_up_msgs = child_comp
+                                    .send_batch_dyn(Finger::All, messages)?;
+                                opt_pass_up_msgs.map(|mut pass_up_msgs|
+                                    (&mut msgs as &mut dyn AnyVecMessages).append(&mut *pass_up_msgs)
+                                );
+                            }
+                        }
+                    },
+                    Node::Comp(comp) => {
+                        let opt_pass_up_msgs = comp
+                            .send_batch_dyn(Finger::All, messages)?;
+                        opt_pass_up_msgs.map(|mut pass_up_msgs|
+                            (&mut msgs as &mut dyn AnyVecMessages).append(&mut *pass_up_msgs)
+                        );
+                    }
+                }
+                Ok(self_updater(self, &mut msgs))
             },
         }
     }
