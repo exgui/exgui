@@ -42,6 +42,12 @@ macro_rules! egml_impl {
         });
         $crate::egml_impl! { @comp $state $comp, $pair ($($tail)*) }
     };
+    (@comp $state:ident $comp:ty, $pair:ident (modifier = for <$pcm:ty> $handler:ident, $($tail:tt)*)) => {
+        $crate::egml_impl! { @comp $state $comp, $pair (modifier = | this, model : $pcm | $handler(this, model), $($tail)*) }
+    };
+    (@comp $state:ident $comp:ty, $pair:ident (modifier = for <$pcm:ty> $handler:expr, $($tail:tt)*)) => {
+        $crate::egml_impl! { @comp $state $comp, $pair (modifier = | this, model : $pcm | ($handler)(this, model), $($tail)*) }
+    };
     (@comp $state:ident $comp:ty, $pair:ident (pass_up = | $msg:ident | $handler:expr, $($tail:tt)*)) => {
         ($pair.1).inner_mut::<$comp>().pass_up_handler = Some(move |$msg: &dyn $crate::egml::AnyMessage| {
             let $msg = $msg.as_any().downcast_ref::<<$comp as $crate::egml::Component>::Message>()
@@ -109,6 +115,12 @@ macro_rules! egml_impl {
     (@prim $state:ident $shape:ident (modifier = | $this:pat, $model:ident : $cm:ty | $handler:expr, $($tail:tt)*)) => {
         $crate::egml_impl! { $state $shape (false, modifier = |$this, $model:$cm| $handler, $($tail)*) }
         $crate::egml_impl! { @prim $state $shape ($($tail)*) }
+    };
+    (@prim $state:ident $shape:ident (modifier = for <$cm:ty> $handler:ident, $($tail:tt)*)) => {
+        $crate::egml_impl! { @prim $state $shape (modifier = |this, model:$cm| $handler(this, model), $($tail)*) }
+    };
+    (@prim $state:ident $shape:ident (modifier = for <$cm:ty> $handler:expr, $($tail:tt)*)) => {
+        $crate::egml_impl! { @prim $state $shape (modifier = |this, model:$cm| ($handler)(this, model), $($tail)*) }
     };
     // Events:
     (@prim $state:ident $shape:ident (onclick = | $var:pat | $handler:expr, $($tail:tt)*)) => {
@@ -565,7 +577,7 @@ mod tests {
     }
 
     #[test]
-    fn set_modifier() {
+    fn set_prim_modifier() {
         let _node: Node<Model> = egml! {
             <group translate = (50.0, 50.0), >
                 <rect x = 0.0, y = 0.0, width = 300.0, height = 300.0,
@@ -575,9 +587,47 @@ mod tests {
                             modifier = |circle, model: Model| {
                                 circle.cy = model.val.into();
                             }, />
+                    <circle modifier = for <Model> get_prim_handler(), />
+                    <circle modifier = for <Model> prim_handler, />
                 </rect>
             </group>
         };
+    }
+
+    fn get_prim_handler() -> impl Fn(&mut Circle, &Model) {
+        |circle: &mut Circle, model: &Model| {
+            circle.cy = model.val.into();
+        }
+    }
+
+    fn prim_handler(circle: &mut Circle, model: &Model) {
+        circle.cy = model.val.into();
+    }
+
+    #[test]
+    fn set_comp_modifier() {
+        let _node: Node<Model> = egml! {
+            <group translate = (50.0, 50.0), >
+                <rect x = 0.0, y = 0.0, width = 300.0, height = 300.0,
+                        fill = None, stroke = (Color::Black, 2.0, 0.5), >
+                    <InnerModel : modifier = |this, model: Model| {
+                            this.send_self(InnerMsg::Toggle(model.val as i32));
+                        }, />
+                    <InnerModel : modifier = for <Model> get_comp_handler(), />
+                    <InnerModel : modifier = for <Model> comp_handler, />
+                </rect>
+            </group>
+        };
+    }
+
+    fn get_comp_handler() -> impl Fn(&mut Comp, &Model) {
+        |this: &mut Comp, model: &Model| {
+            this.send_self(InnerMsg::Toggle(model.val as i32));
+        }
+    }
+
+    fn comp_handler(this: &mut Comp, model: &Model) {
+        this.send_self(InnerMsg::Toggle(model.val as i32));
     }
 
     #[test]
