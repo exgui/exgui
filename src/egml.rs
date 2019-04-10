@@ -6,6 +6,7 @@ pub mod prim;
 pub mod comp;
 pub mod shape;
 pub mod transform;
+pub mod layout;
 
 pub use self::value::*;
 pub use self::converter::*;

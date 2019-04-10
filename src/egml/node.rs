@@ -9,7 +9,6 @@ use crate::controller::InputEvent;
 pub enum Node<M: Component> {
     Prim(Prim<M>),
     Comp(Comp),
-//    List(List),
 }
 
 #[derive(Default, Clone)]
@@ -390,8 +389,6 @@ impl<M: Component> fmt::Debug for Node<M> {
         match *self {
             Node::Prim(ref prim) => prim.fmt(f),
             Node::Comp(ref _comp) => "Component<>".fmt(f),
-//            Node::List(_) => "List<>".fmt(f),
-//            Node::Text(ref text) => text.fmt(f),
         }
     }
 }
