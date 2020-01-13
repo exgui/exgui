@@ -1,0 +1,9 @@
+[package]
+name = "exgui_render_nanovg"
+version = "0.2.0"
+authors = ["Alexander XX <freecoder.xx@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+exgui_core = { path = "../core" }
+nanovg = { version = "1.0", features = ["gl3"] }

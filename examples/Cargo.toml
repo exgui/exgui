@@ -1,0 +1,12 @@
+[package]
+name = "examples"
+version = "0.2.0"
+authors = ["Alexander XX <freecoder.xx@gmail.com>"]
+edition = "2018"
+publish = false
+
+[dependencies]
+chrono = "0.4"
+exgui = { path = "../exgui" }
+exgui_controller_glutin = { path = "../controller_glutin" }
+exgui_render_nanovg = { path = "../render_nanovg" }
