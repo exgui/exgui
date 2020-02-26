@@ -1,18 +1,35 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, collections::HashMap};
 
-use exgui_core::{Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor, AlignVer, Transform, Comp};
+use exgui_core::{
+    Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor,
+    AlignVer, Transform, Comp, EventName, Listener,
+};
 pub use exgui_core::builder::*;
+
+pub struct PrimBuilder<M: Model> {
+    pub children: Vec<Node<M>>,
+    pub listeners: HashMap<EventName, Vec<Listener<M::Message>>>,
+}
+
+impl<M: Model> Default for PrimBuilder<M> {
+    fn default() -> Self {
+        Self {
+            children: Default::default(),
+            listeners: Default::default(),
+        }
+    }
+}
 
 pub fn circle<M: Model>() -> CircleBuilder<M> {
     CircleBuilder {
         shape: Default::default(),
-        children: Default::default(),
+        prim: Default::default(),
     }
 }
 
 pub struct CircleBuilder<M: Model> {
     shape: Circle,
-    children: Vec<Node<M>>,
+    prim: PrimBuilder<M>,
 }
 
 impl<M: Model> CircleBuilder<M> {
@@ -33,7 +50,8 @@ impl<M: Model> Builder<M> for CircleBuilder<M> {
         Node::Prim(Prim::new(
             Cow::Borrowed(Circle::NAME),
             Shape::Circle(self.shape),
-            self.children
+            self.prim.children,
+            self.prim.listeners,
         ))
     }
 }
@@ -45,19 +63,19 @@ impl<M: Model> Entity for CircleBuilder<M> {
     }
 
     fn transform(mut self, transform: impl Into<Transform>) -> Self {
-        self.shape.transform = Some(transform.into());
+        self.shape.transform = transform.into();
         self
     }
 }
 
 impl<M: Model> Primitive<M> for CircleBuilder<M> {
     fn child(mut self, child: impl Builder<M>) -> Self {
-        self.children.push(child.build());
+        self.prim.children.push(child.build());
         self
     }
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
-        self.children.extend(children);
+        self.prim.children.extend(children);
         self
     }
 
@@ -70,25 +88,53 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
         self.shape.fill = Some(fill.into());
         self
     }
+
+    fn remove_stroke(mut self) -> Self {
+        self.shape.stroke = None;
+        self
+    }
+
+    fn remove_fill(mut self) -> Self {
+        self.shape.fill = None;
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M::Message> for CircleBuilder<M> {
+    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(event).or_default().push(listener);
+    }
 }
 
 
 pub fn rect<M: Model>() -> RectBuilder<M> {
     RectBuilder {
         shape: Default::default(),
-        children: Default::default(),
+        prim: Default::default(),
     }
 }
 
 pub struct RectBuilder<M: Model> {
     shape: Rect,
-    children: Vec<Node<M>>,
+    prim: PrimBuilder<M>,
 }
 
 impl<M: Model> RectBuilder<M> {
+    pub fn left_top_pos(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>) -> Self {
+        self.shape.x = x.into();
+        self.shape.y = y.into();
+        self
+    }
+
+    pub fn width(mut self, width: impl Into<RealValue>) -> Self {
+        self.shape.width = width.into();
+        self
+    }
+
+    pub fn height(mut self, height: impl Into<RealValue>) -> Self {
+        self.shape.height = height.into();
+        self
+    }
 }
 
 impl<M: Model> Builder<M> for RectBuilder<M> {
@@ -96,7 +142,8 @@ impl<M: Model> Builder<M> for RectBuilder<M> {
         Node::Prim(Prim::new(
             Cow::Borrowed(Rect::NAME),
             Shape::Rect(self.shape),
-            self.children
+            self.prim.children,
+            self.prim.listeners,
         ))
     }
 }
@@ -108,19 +155,19 @@ impl<M: Model> Entity for RectBuilder<M> {
     }
 
     fn transform(mut self, transform: impl Into<Transform>) -> Self {
-        self.shape.transform = Some(transform.into());
+        self.shape.transform = transform.into();
         self
     }
 }
 
 impl<M: Model> Primitive<M> for RectBuilder<M> {
     fn child(mut self, child: impl Builder<M>) -> Self {
-        self.children.push(child.build());
+        self.prim.children.push(child.build());
         self
     }
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
-        self.children.extend(children);
+        self.prim.children.extend(children);
         self
     }
 
@@ -133,22 +180,35 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
         self.shape.fill = Some(fill.into());
         self
     }
+
+    fn remove_stroke(mut self) -> Self {
+        self.shape.stroke = None;
+        self
+    }
+
+    fn remove_fill(mut self) -> Self {
+        self.shape.fill = None;
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M::Message> for RectBuilder<M> {
+    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(event).or_default().push(listener);
+    }
 }
 
 
 pub fn text<M: Model>(content: impl Into<String>) -> TextBuilder<M> {
     TextBuilder {
         shape: Text { content: content.into(), ..Text::default() },
-        children: Default::default(),
+        prim: Default::default(),
     }
 }
 
 pub struct TextBuilder<M: Model> {
     shape: Text,
-    children: Vec<Node<M>>,
+    prim: PrimBuilder<M>,
 }
 
 impl<M: Model> TextBuilder<M> {
@@ -179,7 +239,8 @@ impl<M: Model> Builder<M> for TextBuilder<M> {
         Node::Prim(Prim::new(
             Cow::Borrowed(Text::NAME),
             Shape::Text(self.shape),
-            self.children
+            self.prim.children,
+            self.prim.listeners,
         ))
     }
 }
@@ -191,19 +252,19 @@ impl<M: Model> Entity for TextBuilder<M> {
     }
 
     fn transform(mut self, transform: impl Into<Transform>) -> Self {
-        self.shape.transform = Some(transform.into());
+        self.shape.transform = transform.into();
         self
     }
 }
 
 impl<M: Model> Primitive<M> for TextBuilder<M> {
     fn child(mut self, child: impl Builder<M>) -> Self {
-        self.children.push(child.build());
+        self.prim.children.push(child.build());
         self
     }
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
-        self.children.extend(children);
+        self.prim.children.extend(children);
         self
     }
 
@@ -216,22 +277,35 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
         self.shape.fill = Some(fill.into());
         self
     }
+
+    fn remove_stroke(mut self) -> Self {
+        self.shape.stroke = None;
+        self
+    }
+
+    fn remove_fill(mut self) -> Self {
+        self.shape.fill = None;
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M::Message> for TextBuilder<M> {
+    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(event).or_default().push(listener);
+    }
 }
 
 
 pub fn path<M: Model>(cmd: impl Into<Vec<PathCommand>>) -> PathBuilder<M> {
     PathBuilder {
         shape: Path { cmd: cmd.into(), ..Path::default() },
-        children: Default::default(),
+        prim: Default::default(),
     }
 }
 
 pub struct PathBuilder<M: Model> {
     shape: Path,
-    children: Vec<Node<M>>,
+    prim: PrimBuilder<M>,
 }
 
 impl<M: Model> PathBuilder<M> {
@@ -242,7 +316,8 @@ impl<M: Model> Builder<M> for PathBuilder<M> {
         Node::Prim(Prim::new(
             Cow::Borrowed(Path::NAME),
             Shape::Path(self.shape),
-            self.children
+            self.prim.children,
+            self.prim.listeners,
         ))
     }
 }
@@ -254,19 +329,19 @@ impl<M: Model> Entity for PathBuilder<M> {
     }
 
     fn transform(mut self, transform: impl Into<Transform>) -> Self {
-        self.shape.transform = Some(transform.into());
+        self.shape.transform = transform.into();
         self
     }
 }
 
 impl<M: Model> Primitive<M> for PathBuilder<M> {
     fn child(mut self, child: impl Builder<M>) -> Self {
-        self.children.push(child.build());
+        self.prim.children.push(child.build());
         self
     }
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
-        self.children.extend(children);
+        self.prim.children.extend(children);
         self
     }
 
@@ -279,22 +354,35 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
         self.shape.fill = Some(fill.into());
         self
     }
+
+    fn remove_stroke(mut self) -> Self {
+        self.shape.stroke = None;
+        self
+    }
+
+    fn remove_fill(mut self) -> Self {
+        self.shape.fill = None;
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M::Message> for PathBuilder<M> {
+    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(event).or_default().push(listener);
+    }
 }
 
 
 pub fn group<M: Model>() -> GroupBuilder<M> {
     GroupBuilder {
         shape: Default::default(),
-        children: Default::default()
+        prim: Default::default()
     }
 }
 
 pub struct GroupBuilder<M: Model> {
     shape: Group,
-    children: Vec<Node<M>>,
+    prim: PrimBuilder<M>,
 }
 
 impl<M: Model> GroupBuilder<M> {
@@ -305,7 +393,8 @@ impl<M: Model> Builder<M> for GroupBuilder<M> {
         Node::Prim(Prim::new(
             Cow::Borrowed(Group::NAME),
             Shape::Group(self.shape),
-            self.children
+            self.prim.children,
+            self.prim.listeners,
         ))
     }
 }
@@ -317,19 +406,19 @@ impl<M: Model> Entity for GroupBuilder<M> {
     }
 
     fn transform(mut self, transform: impl Into<Transform>) -> Self {
-        self.shape.transform = Some(transform.into());
+        self.shape.transform = transform.into();
         self
     }
 }
 
 impl<M: Model> Primitive<M> for GroupBuilder<M> {
     fn child(mut self, child: impl Builder<M>) -> Self {
-        self.children.push(child.build());
+        self.prim.children.push(child.build());
         self
     }
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
-        self.children.extend(children);
+        self.prim.children.extend(children);
         self
     }
 
@@ -342,9 +431,22 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
         self.shape.fill = Some(fill.into());
         self
     }
+
+    fn remove_stroke(mut self) -> Self {
+        self.shape.stroke = None;
+        self
+    }
+
+    fn remove_fill(mut self) -> Self {
+        self.shape.fill = None;
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M::Message> for GroupBuilder<M> {
+    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(event).or_default().push(listener);
+    }
 }
 
 
@@ -379,6 +481,7 @@ impl Entity for CompBuilder {
     }
 }
 
+// todo: use RealValue's
 pub fn translate(x: impl Into<f32>, y: impl Into<f32>) -> Transform {
     Transform::new().with_translation(x.into(), y.into())
 }

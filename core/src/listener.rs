@@ -1,6 +1,6 @@
 use std::{ops::Deref, time::Duration};
 
-use crate::MousePress;
+use crate::MouseDown;
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EventName(&'static str);
@@ -8,6 +8,7 @@ pub struct EventName(&'static str);
 impl EventName {
     pub const WINDOW_RESIZED: EventName = EventName("WindowResized");
     pub const DRAW: EventName = EventName("Draw");
+    pub const ON_MOUSE_DOWN: EventName = EventName("OnMouseDown");
     pub const ON_CLICK: EventName = EventName("OnClick");
 }
 
@@ -23,7 +24,8 @@ impl Deref for EventName {
 pub enum Listener<Msg> {
     WindowResized(fn (u32, u32) -> Msg),
     Draw(fn (Duration) -> Msg),
-    OnClick(fn (MousePress) -> Msg),
+    OnMouseDown(fn (MouseDown) -> Msg),
+    OnClick(fn (MouseDown) -> Msg),
 }
 
 impl<Msg> Listener<Msg> {
@@ -31,6 +33,7 @@ impl<Msg> Listener<Msg> {
         match self {
             Listener::WindowResized(_) => EventName::WINDOW_RESIZED,
             Listener::Draw(_) => EventName::DRAW,
+            Listener::OnMouseDown(_) => EventName::ON_MOUSE_DOWN,
             Listener::OnClick(_) => EventName::ON_CLICK,
         }
     }

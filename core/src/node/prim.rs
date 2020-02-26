@@ -11,12 +11,17 @@ pub struct Prim<M: Model> {
 }
 
 impl<M: Model> Prim<M> {
-    pub fn new(name: Cow<'static, str>, shape: Shape, children: Vec<Node<M>>) -> Self {
+    pub fn new(
+        name: Cow<'static, str>,
+        shape: Shape,
+        children: Vec<Node<M>>,
+        listeners: HashMap<EventName, Vec<Listener<M::Message>>>,
+    ) -> Self {
         Self {
             name,
             shape,
             children,
-            listeners: HashMap::new(),
+            listeners,
             model: PhantomData
         }
     }
@@ -35,22 +40,22 @@ impl<M: Model> Prim<M> {
         }
     }
 
-    pub fn transform(&self) -> Option<&Transform> {
+    pub fn transform(&self) -> &Transform {
         self.shape.transform()
     }
 
-    pub fn transform_mut(&mut self) -> Option<&mut Transform> {
+    pub fn transform_mut(&mut self) -> &mut Transform {
         self.shape.transform_mut()
     }
 
     pub fn send_system_msg(&mut self, msg: SystemMessage, outputs: &mut Vec<M::Message>) {
         match msg {
-            SystemMessage::Input(InputEvent::MousePress(press)) => {
+            SystemMessage::Input(InputEvent::MouseDown(press)) => {
                 if self.intersect(press.pos.x, press.pos.y) {
-                    if let Some(listeners) = self.listeners.get(&EventName::ON_CLICK) {
+                    if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_DOWN) {
                         for listener in listeners {
                             let msg = match listener {
-                                Listener::OnClick(func) => func(press),
+                                Listener::OnMouseDown(func) => func(press),
                                 _ => continue,
                             };
                             outputs.push(msg);
@@ -80,7 +85,6 @@ impl<M: Model> Prim<M> {
                     }
                 }
             },
-            _ => (),
         }
 
         for child in self.children.iter_mut() {

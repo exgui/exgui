@@ -315,9 +315,7 @@ impl Model for Hand {
     }
 
     fn modify_view(&self, view: &mut Node<Self>) {
-        if let Some(transform) = view.transform_mut() {
-            transform.rotate(self.theta);
-        }
+        view.transform_mut().rotate(self.theta);
     }
 }
 
@@ -332,12 +330,11 @@ fn main() {
             .with_srgb(true),
         NanovgRender::default()
     ).unwrap();
-
     app.init().unwrap();
+
     let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
     app.render_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(Clock::create(()));
-
     app.run(comp);
 }

@@ -72,23 +72,23 @@ impl Shape {
         }
     }
 
-    pub fn transform(&self) -> Option<&Transform> {
+    pub fn transform(&self) -> &Transform {
         match self {
-            Shape::Rect(rect) => rect.transform.as_ref(),
-            Shape::Circle(circle) => circle.transform.as_ref(),
-            Shape::Path(path) => path.transform.as_ref(),
-            Shape::Group(group) => group.transform.as_ref(),
-            Shape::Text(text) => text.transform.as_ref(),
+            Shape::Rect(rect) => &rect.transform,
+            Shape::Circle(circle) => &circle.transform,
+            Shape::Path(path) => &path.transform,
+            Shape::Group(group) => &group.transform,
+            Shape::Text(text) => &text.transform,
         }
     }
 
-    pub fn transform_mut(&mut self) -> Option<&mut Transform> {
+    pub fn transform_mut(&mut self) -> &mut Transform {
         match self {
-            Shape::Rect(rect) => rect.transform.as_mut(),
-            Shape::Circle(circle) => circle.transform.as_mut(),
-            Shape::Path(path) => path.transform.as_mut(),
-            Shape::Group(group) => group.transform.as_mut(),
-            Shape::Text(text) => text.transform.as_mut(),
+            Shape::Rect(rect) => &mut rect.transform,
+            Shape::Circle(circle) => &mut circle.transform,
+            Shape::Path(path) => &mut path.transform,
+            Shape::Group(group) => &mut group.transform,
+            Shape::Text(text) => &mut text.transform,
         }
     }
 
@@ -107,7 +107,7 @@ impl Shaped for Shape {
     #[inline]
     fn rect(&self) -> Option<&Rect> {
         match self {
-            Shape::Rect(ref rect) => Some(rect),
+            Shape::Rect(rect) => Some(rect),
             _ => None,
         }
     }
@@ -115,7 +115,7 @@ impl Shaped for Shape {
     #[inline]
     fn rect_mut(&mut self) -> Option<&mut Rect> {
         match self {
-            Shape::Rect(ref mut rect) => Some(rect),
+            Shape::Rect(rect) => Some(rect),
             _ => None,
         }
     }
@@ -123,7 +123,7 @@ impl Shaped for Shape {
     #[inline]
     fn circle(&self) -> Option<&Circle> {
         match self {
-            Shape::Circle(ref circle) => Some(circle),
+            Shape::Circle(circle) => Some(circle),
             _ => None,
         }
     }
@@ -131,7 +131,7 @@ impl Shaped for Shape {
     #[inline]
     fn circle_mut(&mut self) -> Option<&mut Circle> {
         match self {
-            Shape::Circle(ref mut circle) => Some(circle),
+            Shape::Circle(circle) => Some(circle),
             _ => None,
         }
     }
@@ -139,7 +139,7 @@ impl Shaped for Shape {
     #[inline]
     fn path(&self) -> Option<&Path> {
         match self {
-            Shape::Path(ref path) => Some(path),
+            Shape::Path(path) => Some(path),
             _ => None,
         }
     }
@@ -147,7 +147,7 @@ impl Shaped for Shape {
     #[inline]
     fn path_mut(&mut self) -> Option<&mut Path> {
         match self {
-            Shape::Path(ref mut path) => Some(path),
+            Shape::Path(path) => Some(path),
             _ => None,
         }
     }
@@ -155,7 +155,7 @@ impl Shaped for Shape {
     #[inline]
     fn group(&self) -> Option<&Group> {
         match self {
-            Shape::Group(ref group) => Some(group),
+            Shape::Group(group) => Some(group),
             _ => None,
         }
     }
@@ -163,7 +163,7 @@ impl Shaped for Shape {
     #[inline]
     fn group_mut(&mut self) -> Option<&mut Group> {
         match self {
-            Shape::Group(ref mut group) => Some(group),
+            Shape::Group(group) => Some(group),
             _ => None,
         }
     }
@@ -171,7 +171,7 @@ impl Shaped for Shape {
     #[inline]
     fn text(&self) -> Option<&Text> {
         match self {
-            Shape::Text(ref text) => Some(text),
+            Shape::Text(text) => Some(text),
             _ => None,
         }
     }
@@ -179,7 +179,7 @@ impl Shaped for Shape {
     #[inline]
     fn text_mut(&mut self) -> Option<&mut Text> {
         match self {
-            Shape::Text(ref mut text) => Some(text),
+            Shape::Text(text) => Some(text),
             _ => None,
         }
     }
@@ -290,9 +290,9 @@ pub trait CompositeShape {
     fn intersect(&self, x: Real, y: Real) -> bool {
         if let Some(shape) = self.shape() {
             match shape {
-                Shape::Rect(ref rect) => rect.intersect(x, y),
-                Shape::Circle(ref circle) => circle.intersect(x, y),
-                Shape::Path(ref path) => path.intersect(x, y),
+                Shape::Rect(rect) => rect.intersect(x, y),
+                Shape::Circle(circle) => circle.intersect(x, y),
+                Shape::Path(path) => path.intersect(x, y),
                 _ => false,
             }
         } else {

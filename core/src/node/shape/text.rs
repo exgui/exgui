@@ -1,4 +1,4 @@
-use crate::node::{Real, RealValue, ConvertTo, Fill, Stroke, Transform};
+use crate::node::{Real, RealValue, ConvertTo, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Text {
@@ -11,7 +11,7 @@ pub struct Text {
     pub align: (AlignHor, AlignVer),
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
-    pub transform: Option<Transform>,
+    pub transform: Transform,
 }
 
 impl Text {
@@ -21,12 +21,13 @@ impl Text {
         self.id.as_ref().map(|s| s.as_str())
     }
 
+    pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        self.transform.calculate_global(parent_global)
+    }
+
     #[inline]
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {
         // TODO: calvulate intersect
-//        let (x, y) = self.transform.as_ref()
-//            .map(|t| (x - t.matrix[4], y - t.matrix[5]))
-//            .unwrap_or((x, y));
         false
     }
 }

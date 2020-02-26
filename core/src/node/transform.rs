@@ -1,41 +1,25 @@
-/// Represents a transformation in 2D space.
-///
-/// A transformation is a combination of translation (aka. position), skew and scale **or**
-/// translation and rotation; implemented as a column-major matrix in the following form:
-/// **[a c e]** - indices [0 2 4]
-/// **[b d f]** - indices [1 3 5]
-/// **[0 0 1]** - only theoretical / does not really exist. Logically it is always [0 0 1].
-// TODO: need add transformation methods
+use crate::Real;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Transform {
-    pub matrix: [f32; 6],
-    /// Controls whether paths or texts that gets transformed by this Transform
-    /// are drawn in absolute coordinate space or coordinate space relative to the one
-    /// previously active (relative positioning is default)
-    /// This is just flag to tell drawing functions to use this Transform for drawing,
-    /// it does not modify the underlying matrix.
-    pub absolute: bool,
+pub enum Transform {
+    Local(TransformMatrix),
+    Global(TransformMatrix),
+    Calculated {
+        local: Option<TransformMatrix>,
+        global: TransformMatrix,
+    },
+}
+
+impl Default for Transform {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Transform {
     /// Construct a new transform with an identity matrix.
     pub fn new() -> Self {
-        Self {
-            matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            absolute: false,
-        }
-    }
-
-    /// Set flag on this transform to use it in absolute coordinate space. Only applies to text.
-    pub fn absolute(mut self) -> Self {
-        self.absolute = true;
-        self
-    }
-
-    /// Set flag on this transform to use it in local (relative) coordinate space. Only applies to text.
-    pub fn relative(mut self) -> Self {
-        self.absolute = false;
-        self
+        Transform::Local(TransformMatrix::identity())
     }
 
     /// Set the translation of the transform.
@@ -45,16 +29,12 @@ impl Transform {
 
     /// Set the scale of the transform.
     pub fn with_scale(mut self, x: f32, y: f32) -> Self {
-        self.matrix[0] = x;
-        self.matrix[3] = y;
-        self
+        *self.scale(x, y)
     }
 
     /// Set the skew of the transform.
     pub fn with_skew(mut self, x: f32, y: f32) -> Self {
-        self.matrix[2] = x;
-        self.matrix[1] = y;
-        self
+        *self.skew(x, y)
     }
 
     /// Set the rotation of the transform.
@@ -62,34 +42,195 @@ impl Transform {
         *self.rotate(theta)
     }
 
+    pub fn transform(&mut self, modifier: impl Fn(&mut TransformMatrix)) {
+        match self {
+            Transform::Local(matrix)
+            | Transform::Global(matrix) => modifier(matrix),
+            Transform::Calculated { local: Some(local), .. } => {
+                modifier(local);
+                *self = Transform::Local(*local);
+            },
+            Transform::Calculated { global, .. } => {
+                modifier(global);
+                *self = Transform::Global(*global);
+            },
+        }
+    }
+
     pub fn translate(&mut self, x: f32, y: f32) -> &mut Self {
+        self.transform(|matrix| { matrix.translate(x, y); });
+        self
+    }
+
+    pub fn translate_add(&mut self, x: f32, y: f32) -> &mut Self {
+        self.transform(|matrix| { matrix.translate_add(x, y); });
+        self
+    }
+
+    pub fn rotate(&mut self, theta: f32) -> &mut Self {
+        self.transform(|matrix| { matrix.rotate(theta); });
+        self
+    }
+
+    pub fn scale(&mut self, x: f32, y: f32) -> &mut Self {
+        self.transform(|matrix| { matrix.scale(x, y); });
+        self
+    }
+
+    pub fn skew(&mut self, x: f32, y: f32) -> &mut Self {
+        self.transform(|matrix| { matrix.skew(x, y); });
+        self
+    }
+
+    pub fn is_absolute(&self) -> bool {
+        match self {
+            Transform::Global(_) | Transform::Calculated { local: None, .. } => true,
+            _ => false,
+        }
+    }
+
+    pub fn is_relative(&self) -> bool {
+        !self.is_absolute()
+    }
+
+    pub fn is_not_exist(&self) -> bool {
+        self.is_absolute() && self.matrix().is_identity()
+    }
+
+    pub fn matrix(&self) -> TransformMatrix {
+        self.local_matrix().or_else(|| self.global_matrix()).unwrap()
+    }
+
+    pub fn local_matrix(&self) -> Option<TransformMatrix> {
+        match self {
+            Transform::Local(local)
+            | Transform::Calculated { local: Some(local), .. } => Some(*local),
+            _ => None,
+        }
+    }
+
+    pub fn global_matrix(&self) -> Option<TransformMatrix> {
+        match self {
+            Transform::Global(global)
+            | Transform::Calculated { global, .. } => Some(*global),
+            _ => None,
+        }
+    }
+
+    pub fn calculated_matrix(&self) -> Option<TransformMatrix> {
+        match self {
+            Transform::Calculated { global, .. } => Some(*global),
+            _ => None,
+        }
+    }
+
+    pub fn calculate_global(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        let local = self.local_matrix();
+        let global = local
+            .map(|local| parent_global * local)
+            .or_else(|| self.global_matrix())
+            .unwrap();
+        *self = Transform::Calculated { local, global };
+        global
+    }
+}
+
+/// Represents a transformation in 2D space.
+///
+/// A transformation is a combination of translation (aka. position), skew and scale **or**
+/// translation and rotation; implemented as a column-major matrix in the following form:
+/// **[a c e]** - indices [0 2 4]
+/// **[b d f]** - indices [1 3 5]
+/// **[0 0 1]** - only theoretical / does not really exist. Logically it is always [0 0 1].
+// TODO: need add transformation methods
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TransformMatrix {
+    pub matrix: [Real; 6],
+}
+
+impl TransformMatrix {
+    /// Construct a new transform matrix as an identity.
+    pub fn identity() -> Self {
+        Self {
+            matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        }
+    }
+
+    /// Set the translation of the transform.
+    pub fn with_translation(mut self, x: Real, y: Real) -> Self {
+        *self.translate(x, y)
+    }
+
+    /// Set the scale of the transform.
+    pub fn with_scale(mut self, x: Real, y: Real) -> Self {
+        *self.scale(x, y)
+    }
+
+    /// Set the skew of the transform.
+    pub fn with_skew(mut self, x: Real, y: Real) -> Self {
+        *self.skew(x, y)
+    }
+
+    /// Set the rotation of the transform.
+    pub fn with_rotation(mut self, theta: Real) -> Self {
+        *self.rotate(theta)
+    }
+
+    pub fn translate(&mut self, x: Real, y: Real) -> &mut Self {
         self.matrix[4] = x;
         self.matrix[5] = y;
         self
     }
 
-    pub fn translate_add(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn translate_add(&mut self, x: Real, y: Real) -> &mut Self {
         self.matrix[4] += x;
         self.matrix[5] += y;
         self
     }
 
-    pub fn rotate(&mut self, theta: f32) -> &mut Self {
+    pub fn rotate(&mut self, theta: Real) -> &mut Self {
         self.matrix[0] = theta.cos();
         self.matrix[2] = -theta.sin();
         self.matrix[1] = theta.sin();
         self.matrix[3] = theta.cos();
         self
     }
+
+    pub fn scale(&mut self, x: Real, y: Real) -> &mut Self {
+        self.matrix[0] = x;
+        self.matrix[3] = y;
+        self
+    }
+
+    pub fn skew(&mut self, x: Real, y: Real) -> &mut Self {
+        self.matrix[2] = x;
+        self.matrix[1] = y;
+        self
+    }
+
+    pub fn inverse(mut self) -> Self {
+        let inv_det = 1.0 / (self.matrix[0] * self.matrix[3] - self.matrix[2] * self.matrix[1]);
+        self.matrix[0] = self.matrix[3] * inv_det;
+        self.matrix[1] = -self.matrix[1] * inv_det;
+        self.matrix[2] = -self.matrix[2] * inv_det;
+        self.matrix[3] = self.matrix[0] * inv_det;
+        self.matrix[4] = (self.matrix[2] * self.matrix[5] - self.matrix[3] * self.matrix[4]) * inv_det;
+        self.matrix[5] = (self.matrix[1] * self.matrix[4] - self.matrix[0] * self.matrix[5]) * inv_det;
+        self
+    }
+
+    pub fn is_identity(&self) -> bool {
+        self.matrix == [1.0, 0.0, 0.0, 1.0, 0.0, 0.0]
+    }
 }
 
 /// Implementation of multiplication Trait for Transform.
 /// The order in which you multiplicate matters (you are multiplicating matrices)
-impl std::ops::Mul for Transform {
-    type Output = Transform;
+impl std::ops::Mul for TransformMatrix {
+    type Output = TransformMatrix;
     /// Multiplies transform with other transform (the order matters).
-    fn mul(self, rhs: Transform) -> Self::Output {
-        Transform {
+    fn mul(self, rhs: TransformMatrix) -> Self::Output {
+        TransformMatrix {
             matrix: [
                 self.matrix[0] * rhs.matrix[0] + self.matrix[2] * rhs.matrix[1],
                 self.matrix[1] * rhs.matrix[0] + self.matrix[3] * rhs.matrix[1],
@@ -98,8 +239,18 @@ impl std::ops::Mul for Transform {
                 self.matrix[0] * rhs.matrix[4] + self.matrix[2] * rhs.matrix[5] + self.matrix[4],
                 self.matrix[1] * rhs.matrix[4] + self.matrix[3] * rhs.matrix[5] + self.matrix[5],
             ],
-            absolute: self.absolute,
         }
+    }
+}
+
+impl std::ops::Mul<(Real, Real)> for TransformMatrix {
+    type Output = (Real, Real);
+    /// Multiplies transform with other transform (the order matters).
+    fn mul(self, (x, y): (Real, Real)) -> Self::Output {
+        (
+            self.matrix[0] * x + self.matrix[2] * y + self.matrix[4],
+            self.matrix[1] * x + self.matrix[3] * y + self.matrix[5]
+        )
     }
 }
 
@@ -114,8 +265,7 @@ mod tests {
             $t1.matrix[2] == $t2.matrix[2] &&
             $t1.matrix[3] == $t2.matrix[3] &&
             $t1.matrix[4] == $t2.matrix[4] &&
-            $t1.matrix[5] == $t2.matrix[5] &&
-            $t1.absolute == $t2.absolute
+            $t1.matrix[5] == $t2.matrix[5]
         };
     }
 
@@ -134,40 +284,35 @@ mod tests {
     #[test]
     fn test_transform() {
         // Contructors
-        trans_eq!(Transform::new(), Transform {
+        trans_eq!(TransformMatrix::new(), TransformMatrix {
             matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-            absolute: false,
         });
 
-        trans_eq!(Transform::new().with_translation(11.1, 22.2), Transform {
+        trans_eq!(TransformMatrix::new().with_translation(11.1, 22.2), TransformMatrix {
             matrix: [1.0, 0.0, 0.0, 1.0, 11.1, 22.2],
-            absolute: false,
         });
 
-        trans_eq!(Transform::new().with_scale(11.1, 22.2), Transform {
+        trans_eq!(TransformMatrix::new().with_scale(11.1, 22.2), TransformMatrix {
             matrix: [11.1, 0.0, 0.0, 22.2, 0.0, 0.0],
-            absolute: false,
         });
 
-        trans_eq!(Transform::new().with_skew(11.1, 22.2), Transform {
+        trans_eq!(TransformMatrix::new().with_skew(11.1, 22.2), TransformMatrix {
             matrix: [1.0, 22.2, 11.1, 1.0, 0.0, 0.0],
-            absolute: false,
         });
 
         let angle = 90f32.to_radians();
-        trans_eq!(Transform::new().with_rotation(angle), Transform {
+        trans_eq!(TransformMatrix::new().with_rotation(angle), TransformMatrix {
             matrix: [angle.cos(), angle.sin(), -angle.sin(), angle.cos(), 0.0, 0.0],
-            absolute: false,
         });
 
         // Multiplication
-        let identity = Transform::new();
-        let trans = Transform::new().with_translation(10.0, 20.0);
+        let identity = TransformMatrix::new();
+        let trans = TransformMatrix::new().with_translation(10.0, 20.0);
         trans_eq!(identity * trans, trans);
         trans_eq!(trans * identity, trans);
         trans_eq!(identity * identity, identity);
-        let a = Transform::new().with_rotation(123.0);
-        let b = Transform::new().with_skew(66.6, 1337.2);
+        let a = TransformMatrix::new().with_rotation(123.0);
+        let b = TransformMatrix::new().with_skew(66.6, 1337.2);
         trans_not_eq!(a * b, b * a);
     }
 }

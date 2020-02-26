@@ -4,11 +4,11 @@ pub mod mouse;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum InputEvent {
-    MousePress(MousePress),
+    MouseDown(MouseDown),
 }
 
 impl InputEvent {
-    pub fn mouse_press(pos: MousePos) -> Self {
-        Self::MousePress(MousePress { pos })
+    pub fn mouse_down(pos: MousePos, button: MouseButton) -> Self {
+        Self::MouseDown(MouseDown { pos, button })
     }
 }

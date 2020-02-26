@@ -1,4 +1,4 @@
-use crate::node::{Real, Fill, Stroke, Transform};
+use crate::node::{Real, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Path {
@@ -6,7 +6,7 @@ pub struct Path {
     pub cmd: Vec<PathCommand>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
-    pub transform: Option<Transform>,
+    pub transform: Transform,
 }
 
 impl Path {
@@ -14,6 +14,10 @@ impl Path {
 
     pub fn id(&self) -> Option<&str> {
         self.id.as_ref().map(|s| s.as_str())
+    }
+
+    pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        self.transform.calculate_global(parent_global)
     }
 
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {

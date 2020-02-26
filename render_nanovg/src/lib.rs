@@ -6,10 +6,7 @@ use nanovg::{
     StrokeOptions, PathOptions, TextOptions, Alignment,
     LineCap as NanovgLineCap, LineJoin as NanovgLineJoin, Transform as NanovgTransform,
 };
-use exgui_core::{
-    Real, CompositeShape, Shape, Paint, Color, Gradient, Stroke, Fill,
-    Text, AlignHor, AlignVer, Transform, LineCap, LineJoin, Render,
-};
+use exgui_core::{Real, CompositeShape, Shape, Paint, Color, Gradient, Stroke, Fill, Text, AlignHor, AlignVer, Transform, LineCap, LineJoin, Render, TransformMatrix};
 
 struct ToNanovgPaint(Paint);
 
@@ -126,8 +123,8 @@ impl Render for NanovgRender {
                         max_x: self.width,
                         max_y: self.height,
                     };
-                    Self::recalc_sizes(&frame, node, bound, None);
                     let mut defaults = ShapeDefaults::default();
+                    Self::recalc_composite(&frame, node, bound, None, TransformMatrix::identity());
                     Self::render_composite(&frame, node, None, &mut defaults);
                 }
             );
@@ -139,17 +136,6 @@ impl Render for NanovgRender {
 pub struct ShapeDefaults<'a> {
     pub fill: Option<&'a Fill>,
     pub stroke: Option<&'a Stroke>,
-    pub transform: Option<&'a Transform>,
-}
-
-impl ShapeDefaults<'_> {
-    fn calc_transform(&self, transform: Option<Transform>) -> Option<Transform> {
-        if let Some(transform) = transform {
-            self.transform.map(|&default| default * transform).or(Some(transform))
-        } else {
-            self.transform.copied()
-        }
-    }
 }
 
 impl NanovgRender {
@@ -193,11 +179,12 @@ impl NanovgRender {
         Ok(())
     }
 
-    fn recalc_sizes(
+    fn recalc_composite(
         frame: &Frame,
         composite: &mut dyn CompositeShape,
         parent_bound: BoundingBox,
-        text: Option<&Text>
+        text: Option<&Text>,
+        mut parent_global_transform: TransformMatrix,
     ) -> BoundingBox {
         let mut bound = parent_bound;
 
@@ -212,6 +199,7 @@ impl NanovgRender {
                     }
                     rect.width.set_by_pct(parent_bound.width());
                     rect.height.set_by_pct(parent_bound.height());
+                    parent_global_transform = rect.recalculate_transform(parent_global_transform);
 
                     bound = BoundingBox {
                         min_x: rect.x.val(),
@@ -228,6 +216,7 @@ impl NanovgRender {
                         circle.cy.0 += parent_bound.min_y;
                     }
                     circle.r.set_by_pct(parent_bound.width().min(parent_bound.height()));
+                    parent_global_transform = circle.recalculate_transform(parent_global_transform);
 
                     let (cx, cy, r) = (circle.cx.val(), circle.cy.val(), circle.r.val());
                     bound = BoundingBox {
@@ -244,9 +233,16 @@ impl NanovgRender {
                     if text.y.set_by_pct(parent_bound.height()) {
                         text.y.0 += parent_bound.min_y;
                     }
+                    parent_global_transform = text.recalculate_transform(parent_global_transform);
 
                     let text = text.clone();
-                    return Self::calc_inner_bound(frame, composite, bound, Some(&text));
+                    return Self::calc_inner_bound(frame, composite, bound, Some(&text), parent_global_transform);
+                }
+                Shape::Path(path) => {
+                    parent_global_transform = path.recalculate_transform(parent_global_transform);
+                }
+                Shape::Group(group) => {
+                    parent_global_transform = group.recalculate_transform(parent_global_transform);
                 }
 //                Shape::Word(word) => {
 //                    if let Some(text) = text {
@@ -284,11 +280,10 @@ impl NanovgRender {
 //                        };
 //                    }
 //                }
-                _ => (),
             }
         }
 
-        let inner_bound = Self::calc_inner_bound(frame, composite, bound, text);
+        let inner_bound = Self::calc_inner_bound(frame, composite, bound, text, parent_global_transform);
 
         if let Some(shape) = composite.shape_mut() {
             match shape {
@@ -328,13 +323,14 @@ impl NanovgRender {
         frame: &Frame,
         composite: &mut dyn CompositeShape,
         bound: BoundingBox,
-        text: Option<&Text>
+        text: Option<&Text>,
+        parent_global_transform: TransformMatrix,
     ) -> BoundingBox {
         let mut child_bounds = Vec::new();
         if let Some(children) = composite.children_mut() {
             for child in children {
                 child_bounds.push(
-                    Self::recalc_sizes(frame, child, bound, text)
+                    Self::recalc_composite(frame, child, bound, text, parent_global_transform)
                 );
             }
         }
@@ -378,7 +374,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(defaults.calc_transform(rect.transform).as_ref()),
+                        Self::path_options(&rect.transform),
                     );
                 }
                 Shape::Circle(circle) => {
@@ -395,7 +391,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(defaults.calc_transform(circle.transform).as_ref()),
+                        Self::path_options(&circle.transform),
                     );
                 }
                 Shape::Path(path) => {
@@ -476,7 +472,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(defaults.calc_transform(path.transform).as_ref()),
+                        Self::path_options(&path.transform),
                     );
                 }
                 Shape::Text(this_text) => {
@@ -514,9 +510,6 @@ impl NanovgRender {
                     if let Some(ref stroke) = group.stroke {
                         defaults.stroke = Some(stroke);
                     }
-                    if let Some(ref transform) = group.transform {
-                        defaults.transform = Some(transform);
-                    }
                 },
             }
         }
@@ -527,30 +520,26 @@ impl NanovgRender {
         }
     }
 
-    fn to_nanovg_transform(transform: Option<&Transform>) -> Option<NanovgTransform> {
-        transform.map(|transform| {
+    fn nanovg_transform(transform: &Transform) -> Option<NanovgTransform> {
+        if !transform.is_not_exist() {
             let mut nanovg_transform = NanovgTransform::new();
-            if transform.absolute {
+            if transform.is_absolute() {
                 nanovg_transform.absolute();
             }
-            nanovg_transform.matrix = transform.matrix;
-            nanovg_transform
-        })
+            nanovg_transform.matrix = transform
+                .calculated_matrix()
+                .unwrap_or_else(|| transform.matrix())
+                .matrix;
+            Some(nanovg_transform)
+        } else {
+            None
+        }
     }
 
-    fn path_options(transform: Option<&Transform>) -> PathOptions {
-        if let Some(transform) = transform {
-            let mut nanovg_transform = NanovgTransform::new();
-            if transform.absolute {
-                nanovg_transform.absolute();
-            }
-            nanovg_transform.matrix = transform.matrix;
-            PathOptions {
-                transform: Some(nanovg_transform),
-                ..Default::default()
-            }
-        } else {
-            PathOptions::default()
+    fn path_options(transform: &Transform) -> PathOptions {
+        PathOptions {
+            transform: Self::nanovg_transform(transform),
+            ..Default::default()
         }
     }
 
@@ -599,7 +588,7 @@ impl NanovgRender {
             color,
             size: text.font_size.val(),
             align,
-            transform: Self::to_nanovg_transform(defaults.calc_transform(text.transform).as_ref()),
+            transform: Self::nanovg_transform(&text.transform),
             ..Default::default()
         }
     }

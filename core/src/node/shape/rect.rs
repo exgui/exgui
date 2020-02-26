@@ -1,4 +1,4 @@
-use crate::node::{Real, RealValue, Fill, Stroke, Transform};
+use crate::{Real, RealValue, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Rect {
@@ -9,7 +9,7 @@ pub struct Rect {
     pub height: RealValue,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
-    pub transform: Option<Transform>,
+    pub transform: Transform,
 }
 
 impl Rect {
@@ -19,12 +19,18 @@ impl Rect {
         self.id.as_ref().map(|s| s.as_str())
     }
 
+    pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        self.transform.calculate_global(parent_global)
+    }
+
     #[inline]
     pub fn intersect(&self, x: Real, y: Real) -> bool {
-        // TODO: check all transform
-        let (x, y) = self.transform.as_ref()
-            .map(|t| (x - t.matrix[4], y - t.matrix[5]))
-            .unwrap_or((x, y));
+        let matrix = self.transform.global_matrix().unwrap_or_else(|| self.transform.matrix());
+        let (x, y) = if !matrix.is_identity() {
+            matrix.inverse() * (x, y)
+        } else {
+            (x, y)
+        };
         x >= self.x.val() && x <= self.width.val() && y >= self.y.val() && y <= self.height.val()
     }
 }

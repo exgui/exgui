@@ -111,7 +111,7 @@ impl<M: Model> Node<M> {
         }
     }
 
-    pub fn transform_mut(&mut self) -> Option<&mut Transform> {
+    pub fn transform_mut(&mut self) -> &mut Transform {
         match self {
             Node::Prim(prim) => prim.transform_mut(),
             Node::Comp(comp) => comp.transform_mut(),

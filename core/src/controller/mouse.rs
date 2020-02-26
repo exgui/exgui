@@ -1,9 +1,18 @@
-use crate::{Model, Node, Comp, Real, SystemMessage};
+use crate::{Comp, Real, SystemMessage};
 use super::InputEvent;
 
-#[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub struct MousePress {
+#[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
+pub enum MouseButton {
+    Left,
+    Right,
+    Middle,
+    Other(u8),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MouseDown {
     pub pos: MousePos,
+    pub button: MouseButton,
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
@@ -43,9 +52,9 @@ impl MouseInput {
         self.last_pos.unwrap_or_default()
     }
 
-    pub fn left_pressed_comp(&self, comp: &mut Comp) {
+    pub fn pressed_comp(&self, comp: &mut Comp, button: MouseButton) {
         let pos = self.last_pos();
-        comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_press(pos)))
+        comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_down(pos, button)))
     }
 
 //    pub fn left_pressed_node<M: Model>(&self, node: &mut Node<M>) -> Vec<M::Message> {

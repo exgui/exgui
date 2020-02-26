@@ -25,8 +25,8 @@ impl<T: Any> AsAny for T {
 pub trait CompApi: AsAny {
     fn id(&self) -> Option<&str>;
     fn set_id(&mut self, id: String);
-    fn transform(&self) -> Option<&Transform>;
-    fn transform_mut(&mut self) -> Option<&mut Transform>;
+    fn transform(&self) -> &Transform;
+    fn transform_mut(&mut self) -> &mut Transform;
     fn set_transform(&mut self, transform: Transform);
     fn as_composite_shape(&self) -> Option<&dyn CompositeShape>;
     fn as_composite_shape_mut(&mut self) -> Option<&mut dyn CompositeShape>;
@@ -53,11 +53,11 @@ impl Comp {
         self.inner.set_id(id.into());
     }
 
-    pub fn transform(&self) -> Option<&Transform> {
+    pub fn transform(&self) -> &Transform {
         self.inner.transform()
     }
 
-    pub fn transform_mut(&mut self) -> Option<&mut Transform> {
+    pub fn transform_mut(&mut self) -> &mut Transform {
         self.inner.transform_mut()
     }
 
@@ -129,7 +129,7 @@ pub struct CompInner<M: Model> {
     pub model: M,
     view: Option<Node<M>>,
     pub view_state: ChangeViewState,
-    transform: Option<Transform>,
+    transform: Transform,
 }
 
 impl<M: Model> CompInner<M> {
@@ -142,7 +142,7 @@ impl<M: Model> CompInner<M> {
             model,
             view: Some(view),
             view_state: Default::default(),
-            transform: None
+            transform: Default::default(),
         }
     }
 }
@@ -156,16 +156,16 @@ impl<M: Model> CompApi for CompInner<M> {
         self.id = Some(id.into());
     }
 
-    fn transform(&self) -> Option<&Transform> {
-        self.transform.as_ref()
+    fn transform(&self) -> &Transform {
+        &self.transform
     }
 
-    fn transform_mut(&mut self) -> Option<&mut Transform> {
-        self.transform.as_mut()
+    fn transform_mut(&mut self) -> &mut Transform {
+        &mut self.transform
     }
 
     fn set_transform(&mut self, transform: Transform) {
-        self.transform = Some(transform.into());
+        self.transform = transform.into();
     }
 
     fn as_composite_shape(&self) -> Option<&dyn CompositeShape> {
