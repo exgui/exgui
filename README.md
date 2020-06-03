@@ -1,2 +1,2 @@
 # exgui
-Experimental GUI in Rust
+Experimental GUI library for Rust
