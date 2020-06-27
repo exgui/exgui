@@ -6,7 +6,10 @@ use nanovg::{
     StrokeOptions, PathOptions, TextOptions, Alignment,
     LineCap as NanovgLineCap, LineJoin as NanovgLineJoin, Transform as NanovgTransform,
 };
-use exgui_core::{Real, CompositeShape, Shape, Paint, Color, Gradient, Stroke, Fill, Text, AlignHor, AlignVer, Transform, LineCap, LineJoin, Render, TransformMatrix};
+use exgui_core::{
+    Real, GlyphPos, CompositeShape, Shape, Paint, Color, Gradient, Stroke, Fill, Text, AlignHor,
+    AlignVer, Transform, LineCap, LineJoin, Render, TransformMatrix, TextMetrics,
+};
 
 struct ToNanovgPaint(Paint);
 
@@ -123,8 +126,11 @@ impl Render for NanovgRender {
                         max_x: self.width,
                         max_y: self.height,
                     };
+
                     let mut defaults = ShapeDefaults::default();
-                    Self::recalc_composite(&frame, node, bound, None, TransformMatrix::identity());
+                    Self::recalc_composite(&frame, node, bound, None, TransformMatrix::identity(), &mut defaults);
+
+                    let mut defaults = ShapeDefaults::default();
                     Self::render_composite(&frame, node, None, &mut defaults);
                 }
             );
@@ -133,9 +139,9 @@ impl Render for NanovgRender {
 }
 
 #[derive(Default, Clone)]
-pub struct ShapeDefaults<'a> {
-    pub fill: Option<&'a Fill>,
-    pub stroke: Option<&'a Stroke>,
+pub struct ShapeDefaults {
+    pub fill: Option<Fill>,
+    pub stroke: Option<Stroke>,
 }
 
 impl NanovgRender {
@@ -185,6 +191,7 @@ impl NanovgRender {
         parent_bound: BoundingBox,
         text: Option<&Text>,
         mut parent_global_transform: TransformMatrix,
+        defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
         let mut bound = parent_bound;
 
@@ -235,14 +242,37 @@ impl NanovgRender {
                     }
                     parent_global_transform = text.recalculate_transform(parent_global_transform);
 
+                    let nanovg_font = NanovgFont::find(frame.context(), &text.font_name)
+                        .expect(&format!("Font '{}' not found", text.font_name));
+                    let text_options = Self::text_options(text, defaults);
+
+                    let metrics = frame.text_metrics(nanovg_font, text_options);
+                    text.metrics = Some(TextMetrics {
+                        ascender: metrics.ascender,
+                        descender: metrics.descender,
+                        line_height: metrics.line_height,
+                    });
+
+                    text.glyph_positions = frame.text_glyph_positions(
+                        (text.x.val(), text.y.val()),
+                        &text.content,
+                    ).map(|pos| GlyphPos { x: pos.x, min_x: pos.min_x, max_x: pos.max_x }).collect();
+
                     let text = text.clone();
-                    return Self::calc_inner_bound(frame, composite, bound, Some(&text), parent_global_transform);
+                    return Self::calc_inner_bound(frame, composite, bound, Some(&text), parent_global_transform, defaults);
                 }
                 Shape::Path(path) => {
                     parent_global_transform = path.recalculate_transform(parent_global_transform);
                 }
                 Shape::Group(group) => {
                     parent_global_transform = group.recalculate_transform(parent_global_transform);
+
+                    if let Some(ref fill) = group.fill {
+                        defaults.fill = Some(fill.clone());
+                    }
+                    if let Some(ref stroke) = group.stroke {
+                        defaults.stroke = Some(stroke.clone());
+                    }
                 }
 //                Shape::Word(word) => {
 //                    if let Some(text) = text {
@@ -283,7 +313,7 @@ impl NanovgRender {
             }
         }
 
-        let inner_bound = Self::calc_inner_bound(frame, composite, bound, text, parent_global_transform);
+        let inner_bound = Self::calc_inner_bound(frame, composite, bound, text, parent_global_transform, defaults);
 
         if let Some(shape) = composite.shape_mut() {
             match shape {
@@ -325,12 +355,13 @@ impl NanovgRender {
         bound: BoundingBox,
         text: Option<&Text>,
         parent_global_transform: TransformMatrix,
+        defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
         let mut child_bounds = Vec::new();
         if let Some(children) = composite.children_mut() {
             for child in children {
                 child_bounds.push(
-                    Self::recalc_composite(frame, child, bound, text, parent_global_transform)
+                    Self::recalc_composite(frame, child, bound, text, parent_global_transform, defaults)
                 );
             }
         }
@@ -357,17 +388,17 @@ impl NanovgRender {
         }
     }
 
-    fn render_composite<'a>(frame: &Frame, composite: &'a dyn CompositeShape, mut text: Option<&'a Text>, defaults: &mut ShapeDefaults<'a>) {
+    fn render_composite<'a>(frame: &Frame, composite: &'a dyn CompositeShape, mut text: Option<&'a Text>, defaults: &mut ShapeDefaults) {
         if let Some(shape) = composite.shape() {
             match shape {
                 Shape::Rect(rect) => {
                     frame.path(
                         |path| {
                             path.rect((rect.x.val(), rect.y.val()), (rect.width.val(), rect.height.val()));
-                            if let Some(fill) = rect.fill.as_ref().or(defaults.fill) {
+                            if let Some(fill) = rect.fill.as_ref().or(defaults.fill.as_ref()) {
                                 path.fill(ToNanovgPaint(fill.paint), Default::default());
                             };
-                            if let Some(stroke) = rect.stroke.as_ref().or(defaults.stroke) {
+                            if let Some(stroke) = rect.stroke.as_ref().or(defaults.stroke.as_ref()) {
                                 path.stroke(
                                     ToNanovgPaint(stroke.paint),
                                     Self::stroke_option(&stroke)
@@ -381,10 +412,10 @@ impl NanovgRender {
                     frame.path(
                         |path| {
                             path.circle((circle.cx.val(), circle.cy.val()), circle.r.val());
-                            if let Some(fill) = circle.fill.as_ref().or(defaults.fill) {
+                            if let Some(fill) = circle.fill.as_ref().or(defaults.fill.as_ref()) {
                                 path.fill(ToNanovgPaint(fill.paint), Default::default());
                             };
-                            if let Some(stroke) = circle.stroke.as_ref().or(defaults.stroke) {
+                            if let Some(stroke) = circle.stroke.as_ref().or(defaults.stroke.as_ref()) {
                                 path.stroke(
                                     ToNanovgPaint(stroke.paint),
                                     Self::stroke_option(&stroke)
@@ -462,10 +493,10 @@ impl NanovgRender {
                                     _ => panic!("Not impl rendering cmd {:?}", cmd), // TODO: need refl impl
                                 }
                             }
-                            if let Some(fill) = path.fill.as_ref().or(defaults.fill) {
+                            if let Some(fill) = path.fill.as_ref().or(defaults.fill.as_ref()) {
                                 nvg_path.fill(ToNanovgPaint(fill.paint), Default::default());
                             };
-                            if let Some(stroke) = path.stroke.as_ref().or(defaults.stroke) {
+                            if let Some(stroke) = path.stroke.as_ref().or(defaults.stroke.as_ref()) {
                                 nvg_path.stroke(
                                     ToNanovgPaint(stroke.paint),
                                     Self::stroke_option(&stroke)
@@ -505,10 +536,10 @@ impl NanovgRender {
 //                }
                 Shape::Group(group) => {
                     if let Some(ref fill) = group.fill {
-                        defaults.fill = Some(fill);
+                        defaults.fill = Some(fill.clone());
                     }
                     if let Some(ref stroke) = group.stroke {
-                        defaults.stroke = Some(stroke);
+                        defaults.stroke = Some(stroke.clone());
                     }
                 },
             }
@@ -565,7 +596,7 @@ impl NanovgRender {
 
     fn text_options(text: &Text, defaults: &ShapeDefaults) -> TextOptions {
         let color = ToNanovgPaint::to_nanovg_color(
-            text.fill.as_ref().or(defaults.fill).and_then(|fill| if let Paint::Color(color) = fill.paint {
+            text.fill.as_ref().or(defaults.fill.as_ref()).and_then(|fill| if let Paint::Color(color) = fill.paint {
                 Some(color)
             } else {
                 None

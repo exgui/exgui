@@ -1,9 +1,25 @@
 use crate::node::{Real, RealValue, ConvertTo, Fill, Stroke, Transform, TransformMatrix};
 
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
+pub struct GlyphPos {
+    pub x: Real,
+    pub max_x: Real,
+    pub min_x: Real,
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq)]
+pub struct TextMetrics {
+    pub ascender: f32,
+    pub descender: f32,
+    pub line_height: f32,
+}
+
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Text {
     pub id: Option<String>,
     pub content: String,
+    pub glyph_positions: Vec<GlyphPos>,
+    pub metrics: Option<TextMetrics>,
     pub x: RealValue,
     pub y: RealValue,
     pub font_name: String,

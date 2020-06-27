@@ -78,6 +78,23 @@ impl<M: Model> Node<M> {
         }
     }
 
+    pub fn get_prim(&self, id: impl AsRef<str>) -> Option<&Prim<M>> {
+        let id = id.as_ref();
+        match self {
+            Node::Prim(prim) => if prim.id() == Some(id) {
+                Some(prim)
+            } else {
+                for child in &prim.children {
+                    if let Some(prim) = child.get_prim(id) {
+                        return Some(prim);
+                    }
+                }
+                None
+            },
+            _ => None,
+        }
+    }
+
     pub fn get_prim_mut(&mut self, id: impl AsRef<str>) -> Option<&mut Prim<M>> {
         let id = id.as_ref();
         match self {
