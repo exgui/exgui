@@ -1,4 +1,4 @@
-use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent};
+use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent, On};
 
 pub trait Builder<M: Model> {
     fn build(self) -> Node<M>;
@@ -24,29 +24,29 @@ pub trait Primitive<M: Model> {
     fn remove_fill(self) -> Self;
 }
 
-pub trait EventHandler<Msg>: Sized {
-    fn add_listener(&mut self, listener: Listener<Msg>);
+pub trait EventHandler<M: Model>: Sized {
+    fn add_listener(&mut self, listener: Listener<M>);
 
-    fn on_click(self, _trigger: fn(()) -> Msg) -> Self {
+    fn on_click(self, _trigger: fn(()) -> M::Message) -> Self {
         self
     }
 
-    fn on_mouse_down(mut self, trigger: fn(MouseDown) -> Msg) -> Self {
+    fn on_mouse_down(mut self, trigger: fn(On<M, MouseDown>) -> M::Message) -> Self {
         self.add_listener(Listener::OnMouseDown(trigger));
         self
     }
 
-    fn on_key_down(mut self, trigger: fn(KeyboardEvent) -> Msg) -> Self {
+    fn on_key_down(mut self, trigger: fn(On<M, KeyboardEvent>) -> M::Message) -> Self {
         self.add_listener(Listener::OnKeyDown(trigger));
         self
     }
 
-    fn on_key_up(mut self, trigger: fn(KeyboardEvent) -> Msg) -> Self {
+    fn on_key_up(mut self, trigger: fn(On<M, KeyboardEvent>) -> M::Message) -> Self {
         self.add_listener(Listener::OnKeyUp(trigger));
         self
     }
 
-    fn on_input_char(mut self, trigger: fn(char) -> Msg) -> Self {
+    fn on_input_char(mut self, trigger: fn(On<M, char>) -> M::Message) -> Self {
         self.add_listener(Listener::OnInputChar(trigger));
         self
     }

@@ -1,6 +1,11 @@
 use std::{ops::Deref, time::Duration};
 
-use crate::{MouseDown, KeyboardEvent};
+use crate::{MouseDown, KeyboardEvent, Model, Prim};
+
+pub struct On<'a, M: Model, E> {
+    pub prim: &'a Prim<M>,
+    pub event: E,
+}
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct EventName(&'static str);
@@ -24,17 +29,17 @@ impl Deref for EventName {
 }
 
 
-pub enum Listener<Msg> {
-    WindowResized(fn (u32, u32) -> Msg),
-    Draw(fn (Duration) -> Msg),
-    OnMouseDown(fn (MouseDown) -> Msg),
-    OnKeyDown(fn (KeyboardEvent) -> Msg),
-    OnKeyUp(fn (KeyboardEvent) -> Msg),
-    OnClick(fn (MouseDown) -> Msg),
-    OnInputChar(fn (char) -> Msg),
+pub enum Listener<M: Model> {
+    WindowResized(fn (u32, u32) -> M::Message),
+    Draw(fn (Duration) -> M::Message),
+    OnMouseDown(fn (On<M, MouseDown>) -> M::Message),
+    OnKeyDown(fn (On<M, KeyboardEvent>) -> M::Message),
+    OnKeyUp(fn (On<M, KeyboardEvent>) -> M::Message),
+    OnClick(fn (On<M, MouseDown>) -> M::Message),
+    OnInputChar(fn (On<M, char>) -> M::Message),
 }
 
-impl<Msg> Listener<Msg> {
+impl<M: Model> Listener<M> {
     pub fn event_name(&self) -> EventName {
         match self {
             Listener::WindowResized(_) => EventName::WINDOW_RESIZED,

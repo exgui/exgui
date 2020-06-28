@@ -4,7 +4,7 @@ use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
 use exgui::{
     builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*,
-    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage,
+    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, CompInner,
 };
 
 enum CaretAction {
@@ -25,7 +25,7 @@ impl CaretAction {
 }
 
 struct EditBox {
-    text: String,
+    initial_text: String,
     editable: bool,
     focus: bool,
     caret_idx: usize,
@@ -47,7 +47,7 @@ impl Model for EditBox {
 
     fn create(_props: Self::Properties) -> Self {
         EditBox {
-            text: "Cos or sin".to_string(),
+            initial_text: "Cos or sin".to_string(),
             editable: true,
             focus: false,
             caret_action: CaretAction::None,
@@ -122,16 +122,16 @@ impl Model for EditBox {
                 .width(400)
                 .height(40)
                 .stroke((Color::Blue, 2, 0.5))
-                .on_mouse_down(|event| Msg::OnFocus(event.pos))
-                .on_key_down(|event| {
-                    if let Some(keycode) = event.keycode {
+                .on_mouse_down(|case| Msg::OnFocus(case.event.pos))
+                .on_key_down(|case| {
+                    if let Some(keycode) = case.event.keycode {
                         Msg::OnKeyDown(keycode)
                     } else {
                         Msg::None
                     }
                 })
-                .on_input_char(|ch| Msg::Input(ch))
-                .child(text(&self.text)
+                .on_input_char(|case| Msg::Input(case.event))
+                .child(text(&self.initial_text)
                     .id("text")
                     .font_name("Roboto")
                     .font_size(32),
@@ -170,16 +170,14 @@ impl Model for EditBox {
                 self.caret_action = CaretAction::Redraw;
             },
             CaretAction::MoveRight => {
-                self.caret_idx = self.caret_idx + if self.text.chars().count() > self.caret_idx { 1 } else { 0 };
+                self.caret_idx = self.caret_idx + if text.glyph_positions.len() > self.caret_idx { 1 } else { 0 };
                 self.caret_action = CaretAction::Redraw;
             },
             CaretAction::Input(ch) => {
                 if self.caret_idx < text.glyph_positions.len() {
                     text.content.insert(self.caret_idx, ch);
-                    self.text.insert(self.caret_idx, ch);
                 } else {
                     text.content.push(ch);
-                    self.text.push(ch);
                 }
                 self.caret_idx += 1;
                 self.caret_action = CaretAction::Redraw;
@@ -187,7 +185,6 @@ impl Model for EditBox {
             CaretAction::Delete => {
                 if self.caret_idx < text.glyph_positions.len() {
                     text.content.remove(self.caret_idx);
-                    self.text.remove(self.caret_idx);
                     self.caret_action = CaretAction::Redraw;
                 }
             }
@@ -195,17 +192,15 @@ impl Model for EditBox {
                 if self.caret_idx > 0 {
                     self.caret_idx -= 1;
                     text.content.remove(self.caret_idx);
-                    self.text.remove(self.caret_idx);
                     self.caret_action = CaretAction::Redraw;
                 }
             }
             CaretAction::Redraw => {
-                let caret_pos = text
-                    .glyph_positions
-                    .get(self.caret_idx)
-                    .map(|pos| pos.min_x)
-                    .or_else(|| text.glyph_positions.last().map(|last| last.max_x))
-                    .unwrap_or(0.0);
+                let caret_pos = if self.caret_idx > 0 {
+                    text.glyph_positions[self.caret_idx - 1].max_x
+                } else {
+                    0.0
+                };
                 Self::draw_caret(view, caret_pos);
             },
             CaretAction::None => (),

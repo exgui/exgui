@@ -8,7 +8,7 @@ pub use exgui_core::builder::*;
 
 pub struct PrimBuilder<M: Model> {
     pub children: Vec<Node<M>>,
-    pub listeners: HashMap<EventName, Vec<Listener<M::Message>>>,
+    pub listeners: HashMap<EventName, Vec<Listener<M>>>,
 }
 
 impl<M: Model> Default for PrimBuilder<M> {
@@ -100,8 +100,8 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
     }
 }
 
-impl<M: Model> EventHandler<M::Message> for CircleBuilder<M> {
-    fn add_listener(&mut self, listener: Listener<M::Message>) {
+impl<M: Model> EventHandler<M> for CircleBuilder<M> {
+    fn add_listener(&mut self, listener: Listener<M>) {
         self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
@@ -192,8 +192,8 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
     }
 }
 
-impl<M: Model> EventHandler<M::Message> for RectBuilder<M> {
-    fn add_listener(&mut self, listener: Listener<M::Message>) {
+impl<M: Model> EventHandler<M> for RectBuilder<M> {
+    fn add_listener(&mut self, listener: Listener<M>) {
         self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
@@ -289,8 +289,8 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
     }
 }
 
-impl<M: Model> EventHandler<M::Message> for TextBuilder<M> {
-    fn add_listener(&mut self, listener: Listener<M::Message>) {
+impl<M: Model> EventHandler<M> for TextBuilder<M> {
+    fn add_listener(&mut self, listener: Listener<M>) {
         self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
@@ -366,8 +366,8 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
     }
 }
 
-impl<M: Model> EventHandler<M::Message> for PathBuilder<M> {
-    fn add_listener(&mut self, listener: Listener<M::Message>) {
+impl<M: Model> EventHandler<M> for PathBuilder<M> {
+    fn add_listener(&mut self, listener: Listener<M>) {
         self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
@@ -443,8 +443,8 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
     }
 }
 
-impl<M: Model> EventHandler<M::Message> for GroupBuilder<M> {
-    fn add_listener(&mut self, listener: Listener<M::Message>) {
+impl<M: Model> EventHandler<M> for GroupBuilder<M> {
+    fn add_listener(&mut self, listener: Listener<M>) {
         self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }

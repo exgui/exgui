@@ -1,12 +1,15 @@
 use std::{borrow::Cow, marker::PhantomData, collections::HashMap};
 
-use crate::{InputEvent, EventName, Listener, Model, Node, Shape, CompositeShape, CompositeShapeIter, CompositeShapeIterMut, SystemMessage, Transform};
+use crate::{
+    InputEvent, EventName, Listener, Model, Node, Shape, CompositeShape, CompositeShapeIter,
+    CompositeShapeIterMut, SystemMessage, Transform, On,
+};
 
 pub struct Prim<M: Model> {
     pub name: Cow<'static, str>,
     pub shape: Shape,
     pub children: Vec<Node<M>>,
-    pub listeners: HashMap<EventName, Vec<Listener<M::Message>>>,
+    pub listeners: HashMap<EventName, Vec<Listener<M>>>,
     model: PhantomData<M>,
 }
 
@@ -15,7 +18,7 @@ impl<M: Model> Prim<M> {
         name: Cow<'static, str>,
         shape: Shape,
         children: Vec<Node<M>>,
-        listeners: HashMap<EventName, Vec<Listener<M::Message>>>,
+        listeners: HashMap<EventName, Vec<Listener<M>>>,
     ) -> Self {
         Self {
             name,
@@ -56,7 +59,7 @@ impl<M: Model> Prim<M> {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_DOWN) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnMouseDown(func) => func(press),
+                                    Listener::OnMouseDown(func) => func(On { prim: self, event: press }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);
@@ -67,7 +70,7 @@ impl<M: Model> Prim<M> {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnKeyDown(func) => func(event),
+                                    Listener::OnKeyDown(func) => func(On { prim: self, event }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);
@@ -78,7 +81,7 @@ impl<M: Model> Prim<M> {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_UP) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnKeyUp(func) => func(event),
+                                    Listener::OnKeyUp(func) => func(On { prim: self, event }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);
@@ -89,7 +92,7 @@ impl<M: Model> Prim<M> {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_INPUT_CHAR) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnInputChar(func) => func(ch),
+                                    Listener::OnInputChar(func) => func(On { prim: self, event: ch }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);

@@ -126,9 +126,9 @@ impl CompositeShape for Comp {
 pub struct CompInner<M: Model> {
     id: Option<String>,
     props: Option<M::Properties>,
-    pub model: M,
+    model: M,
     view: Option<Node<M>>,
-    pub view_state: ChangeViewState,
+    view_state: ChangeViewState,
     transform: Transform,
 }
 
