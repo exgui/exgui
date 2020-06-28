@@ -4,13 +4,17 @@ use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
 use exgui::{
     builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*,
-    MousePos, Shaped, Real, VirtualKeyCode,
+    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage,
 };
 
 enum CaretAction {
     Put(Real),
     MoveLeft,
     MoveRight,
+    Input(char),
+    Delete,
+    Backspace,
+    Redraw,
     None,
 }
 
@@ -32,6 +36,8 @@ struct EditBox {
 pub enum Msg {
     OnFocus(MousePos),
     OnKeyDown(VirtualKeyCode),
+    Input(char),
+    Draw,
     None,
 }
 
@@ -49,6 +55,13 @@ impl Model for EditBox {
         }
     }
 
+    fn system_update(&mut self, msg: SystemMessage) -> Option<Self::Message> {
+        match msg {
+            SystemMessage::Draw(_) => Some(Msg::Draw),
+            _ => None,
+        }
+    }
+
     fn update(&mut self, msg: Self::Message) -> ChangeView {
         match msg {
             Msg::OnFocus(pos) => {
@@ -60,7 +73,7 @@ impl Model for EditBox {
                     ChangeView::None
                 }
             },
-            Msg::OnKeyDown(keycode) => {
+            Msg::OnKeyDown(keycode) if self.editable => {
                 match keycode {
                     VirtualKeyCode::Left => {
                         self.caret_action = CaretAction::MoveLeft;
@@ -70,10 +83,33 @@ impl Model for EditBox {
                         self.caret_action = CaretAction::MoveRight;
                         ChangeView::Modify
                     }
+                    VirtualKeyCode::Delete => {
+                        self.caret_action = CaretAction::Delete;
+                        ChangeView::Modify
+                    }
+                    VirtualKeyCode::Backspace => {
+                        self.caret_action = CaretAction::Backspace;
+                        ChangeView::Modify
+                    }
                     _ => ChangeView::None,
                 }
             }
-            Msg::None => ChangeView::None,
+            Msg::Input(ch) if self.editable => {
+                if ch != '\n' && (ch.is_alphanumeric() || ch.is_whitespace()) {
+                    self.caret_action = CaretAction::Input(ch);
+                    ChangeView::Modify
+                } else {
+                    ChangeView::None
+                }
+            }
+            Msg::Draw if self.editable => {
+                if let CaretAction::Redraw = self.caret_action {
+                    ChangeView::Modify
+                } else {
+                    ChangeView::None
+                }
+            }
+            _ => ChangeView::None,
         }
     }
 
@@ -94,7 +130,7 @@ impl Model for EditBox {
                         Msg::None
                     }
                 })
-                .on_input_char(|ch| { println!("Char: {:?}", ch); Msg::None })
+                .on_input_char(|ch| Msg::Input(ch))
                 .child(text(&self.text)
                     .id("text")
                     .font_name("Roboto")
@@ -105,47 +141,75 @@ impl Model for EditBox {
     }
 
     fn modify_view(&mut self, view: &mut Node<Self>) {
-        let mut caret_pos = 0.0;
-        if let Some(text) = view.get_prim("text").and_then(|text| text.shape.text()) {
-            match self.caret_action.take() {
-                CaretAction::Put(focus_pos) => {
-                    if let Some(idx) = text.glyph_positions.iter().position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x) {
-                        let pos = text.glyph_positions[idx];
-                        let before = focus_pos - pos.min_x;
-                        let after = pos.max_x - focus_pos;
-                        if before < after {
-                            caret_pos = pos.min_x;
-                            self.caret_idx = idx;
-                        } else {
-                            caret_pos = pos.max_x;
-                            self.caret_idx = idx + 1;
-                        }
-                    }
-                    if let Some(last) = text.glyph_positions.last() {
-                        if focus_pos > last.max_x {
-                            caret_pos = last.max_x;
-                            self.caret_idx = text.glyph_positions.len();
-                        }
-                    }
-                },
-                CaretAction::MoveLeft => {
-                    self.caret_idx = self.caret_idx.checked_sub(1).unwrap_or(0);
-                    caret_pos = text.glyph_positions[self.caret_idx].min_x;
-                },
-                CaretAction::MoveRight => {
-                    self.caret_idx = self.caret_idx + if self.text.chars().count() > self.caret_idx { 1 } else { 0 };
-                    caret_pos = text
-                        .glyph_positions
-                        .get(self.caret_idx)
-                        .map(|pos| pos.min_x)
-                        .or_else(|| text.glyph_positions.last().map(|last| last.max_x))
-                        .unwrap_or(caret_pos);
-                },
-                CaretAction::None => (),
-            }
-        }
+        let text = view
+            .get_prim_mut("text")
+            .and_then(|text| text.shape.text_mut())
+            .expect("Text primitive expected");
 
-        Self::draw_caret(view, caret_pos);
+        match self.caret_action.take() {
+            CaretAction::Put(focus_pos) => {
+                if let Some(idx) = text.glyph_positions.iter().position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x) {
+                    let pos = text.glyph_positions[idx];
+                    let before = focus_pos - pos.min_x;
+                    let after = pos.max_x - focus_pos;
+                    if before < after {
+                        self.caret_idx = idx;
+                    } else {
+                        self.caret_idx = idx + 1;
+                    }
+                }
+                if let Some(last) = text.glyph_positions.last() {
+                    if focus_pos > last.max_x {
+                        self.caret_idx = text.glyph_positions.len();
+                    }
+                }
+                self.caret_action = CaretAction::Redraw;
+            },
+            CaretAction::MoveLeft => {
+                self.caret_idx = self.caret_idx.checked_sub(1).unwrap_or(0);
+                self.caret_action = CaretAction::Redraw;
+            },
+            CaretAction::MoveRight => {
+                self.caret_idx = self.caret_idx + if self.text.chars().count() > self.caret_idx { 1 } else { 0 };
+                self.caret_action = CaretAction::Redraw;
+            },
+            CaretAction::Input(ch) => {
+                if self.caret_idx < text.glyph_positions.len() {
+                    text.content.insert(self.caret_idx, ch);
+                    self.text.insert(self.caret_idx, ch);
+                } else {
+                    text.content.push(ch);
+                    self.text.push(ch);
+                }
+                self.caret_idx += 1;
+                self.caret_action = CaretAction::Redraw;
+            }
+            CaretAction::Delete => {
+                if self.caret_idx < text.glyph_positions.len() {
+                    text.content.remove(self.caret_idx);
+                    self.text.remove(self.caret_idx);
+                    self.caret_action = CaretAction::Redraw;
+                }
+            }
+            CaretAction::Backspace => {
+                if self.caret_idx > 0 {
+                    self.caret_idx -= 1;
+                    text.content.remove(self.caret_idx);
+                    self.text.remove(self.caret_idx);
+                    self.caret_action = CaretAction::Redraw;
+                }
+            }
+            CaretAction::Redraw => {
+                let caret_pos = text
+                    .glyph_positions
+                    .get(self.caret_idx)
+                    .map(|pos| pos.min_x)
+                    .or_else(|| text.glyph_positions.last().map(|last| last.max_x))
+                    .unwrap_or(0.0);
+                Self::draw_caret(view, caret_pos);
+            },
+            CaretAction::None => (),
+        }
     }
 }
 
