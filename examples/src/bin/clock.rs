@@ -194,7 +194,7 @@ impl Model for Clock {
             .build()
     }
 
-    fn modify_view(&self, view: &mut Node<Self>) {
+    fn modify_view(&mut self, view: &mut Node<Self>) {
         if self.day_changed {
             view.get_prim_mut("date")
                 .map(|prim| prim.set_text(format!(
@@ -314,7 +314,7 @@ impl Model for Hand {
             .build()
     }
 
-    fn modify_view(&self, view: &mut Node<Self>) {
+    fn modify_view(&mut self, view: &mut Node<Self>) {
         view.transform_mut().rotate(self.theta);
     }
 }

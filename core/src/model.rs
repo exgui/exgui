@@ -18,7 +18,7 @@ pub trait Model: Sized + 'static {
     fn build_view(&self) -> Node<Self>;
 
     #[allow(unused_variables)]
-    fn modify_view(&self, view: &mut Node<Self>) {
+    fn modify_view(&mut self, view: &mut Node<Self>) {
         unimplemented!();
     }
 }

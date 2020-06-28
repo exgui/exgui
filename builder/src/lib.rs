@@ -101,8 +101,8 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
 }
 
 impl<M: Model> EventHandler<M::Message> for CircleBuilder<M> {
-    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
-        self.prim.listeners.entry(event).or_default().push(listener);
+    fn add_listener(&mut self, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
 
@@ -193,8 +193,8 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
 }
 
 impl<M: Model> EventHandler<M::Message> for RectBuilder<M> {
-    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
-        self.prim.listeners.entry(event).or_default().push(listener);
+    fn add_listener(&mut self, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
 
@@ -290,8 +290,8 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
 }
 
 impl<M: Model> EventHandler<M::Message> for TextBuilder<M> {
-    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
-        self.prim.listeners.entry(event).or_default().push(listener);
+    fn add_listener(&mut self, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
 
@@ -367,8 +367,8 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
 }
 
 impl<M: Model> EventHandler<M::Message> for PathBuilder<M> {
-    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
-        self.prim.listeners.entry(event).or_default().push(listener);
+    fn add_listener(&mut self, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
 
@@ -444,8 +444,8 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
 }
 
 impl<M: Model> EventHandler<M::Message> for GroupBuilder<M> {
-    fn add_listener(&mut self, event: EventName, listener: Listener<M::Message>) {
-        self.prim.listeners.entry(event).or_default().push(listener);
+    fn add_listener(&mut self, listener: Listener<M::Message>) {
+        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
     }
 }
 

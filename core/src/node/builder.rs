@@ -1,6 +1,4 @@
-use crate::{
-    controller::MouseDown, Node, Model, Stroke, Fill, Transform, EventName, Listener,
-};
+use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent};
 
 pub trait Builder<M: Model> {
     fn build(self) -> Node<M>;
@@ -27,14 +25,29 @@ pub trait Primitive<M: Model> {
 }
 
 pub trait EventHandler<Msg>: Sized {
-    fn add_listener(&mut self, event: EventName, listener: Listener<Msg>);
+    fn add_listener(&mut self, listener: Listener<Msg>);
 
     fn on_click(self, _trigger: fn(()) -> Msg) -> Self {
         self
     }
 
     fn on_mouse_down(mut self, trigger: fn(MouseDown) -> Msg) -> Self {
-        self.add_listener(EventName::ON_MOUSE_DOWN, Listener::OnMouseDown(trigger));
+        self.add_listener(Listener::OnMouseDown(trigger));
+        self
+    }
+
+    fn on_key_down(mut self, trigger: fn(KeyboardEvent) -> Msg) -> Self {
+        self.add_listener(Listener::OnKeyDown(trigger));
+        self
+    }
+
+    fn on_key_up(mut self, trigger: fn(KeyboardEvent) -> Msg) -> Self {
+        self.add_listener(Listener::OnKeyUp(trigger));
+        self
+    }
+
+    fn on_input_char(mut self, trigger: fn(char) -> Msg) -> Self {
+        self.add_listener(Listener::OnInputChar(trigger));
         self
     }
 }

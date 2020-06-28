@@ -50,15 +50,50 @@ impl<M: Model> Prim<M> {
 
     pub fn send_system_msg(&mut self, msg: SystemMessage, outputs: &mut Vec<M::Message>) {
         match msg {
-            SystemMessage::Input(InputEvent::MouseDown(press)) => {
-                if self.intersect(press.pos.x, press.pos.y) {
-                    if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_DOWN) {
-                        for listener in listeners {
-                            let msg = match listener {
-                                Listener::OnMouseDown(func) => func(press),
-                                _ => continue,
-                            };
-                            outputs.push(msg);
+            SystemMessage::Input(input) => {
+                match input {
+                    InputEvent::MouseDown(press) => if self.intersect(press.pos.x, press.pos.y) {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_DOWN) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnMouseDown(func) => func(press),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
+                        }
+                    }
+                    InputEvent::KeyDown(event) => {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnKeyDown(func) => func(event),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
+                        }
+                    }
+                    InputEvent::KeyUp(event) => {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_UP) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnKeyUp(func) => func(event),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
+                        }
+                    }
+                    InputEvent::Char(ch) => {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_INPUT_CHAR) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnInputChar(func) => func(ch),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
                         }
                     }
                 }

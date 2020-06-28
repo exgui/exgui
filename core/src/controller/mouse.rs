@@ -16,7 +16,7 @@ pub struct MouseDown {
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
-pub struct MouseInput {
+pub struct MouseController {
     last_pos: Option<MousePos>,
     last_offset: Option<MousePos>,
 }
@@ -27,9 +27,9 @@ pub struct MousePos {
     pub y: Real,
 }
 
-impl MouseInput {
+impl MouseController {
     pub fn new() -> Self {
-        MouseInput {
+        MouseController {
             last_pos: None,
             last_offset: None,
         }
