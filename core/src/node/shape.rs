@@ -3,6 +3,7 @@ pub use self::{
     circle::*,
     path::*,
     group::*,
+    padding::*,
     text::*,
     paint::*,
     stroke::*,
@@ -15,6 +16,7 @@ pub mod rect;
 pub mod circle;
 pub mod path;
 pub mod group;
+pub mod padding;
 pub mod text;
 pub mod paint;
 pub mod stroke;
@@ -286,6 +288,8 @@ pub trait CompositeShape {
     fn children(&self) -> Option<CompositeShapeIter>;
 
     fn children_mut(&mut self) -> Option<CompositeShapeIterMut>;
+
+    fn need_recalc(&self) -> Option<bool>;
 
     fn intersect(&self, x: Real, y: Real) -> bool {
         if let Some(shape) = self.shape() {

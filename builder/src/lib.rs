@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use exgui_core::{
     Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor,
-    AlignVer, Transform, Comp, EventName, Listener,
+    AlignVer, Transform, Comp, EventName, Listener, Padding,
 };
 pub use exgui_core::builder::*;
 
@@ -41,6 +41,45 @@ impl<M: Model> CircleBuilder<M> {
 
     pub fn radius(mut self, r: impl Into<RealValue>) -> Self {
         self.shape.r = r.into();
+        self
+    }
+
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.shape.padding = padding.into();
+        self
+    }
+
+    pub fn padding_top(mut self, top: impl Into<RealValue>) -> Self {
+        self.shape.padding.top = top.into();
+        self
+    }
+
+    pub fn padding_left(mut self, left: impl Into<RealValue>) -> Self {
+        self.shape.padding.left = left.into();
+        self
+    }
+
+    pub fn padding_right(mut self, right: impl Into<RealValue>) -> Self {
+        self.shape.padding.right = right.into();
+        self
+    }
+
+    pub fn padding_bottom(mut self, bottom: impl Into<RealValue>) -> Self {
+        self.shape.padding.bottom = bottom.into();
+        self
+    }
+
+    pub fn padding_top_and_bottom(mut self, padding: impl Into<RealValue>) -> Self {
+        let padding = padding.into();
+        self.shape.padding.top = padding;
+        self.shape.padding.bottom = padding;
+        self
+    }
+
+    pub fn padding_left_and_right(mut self, padding: impl Into<RealValue>) -> Self {
+        let padding = padding.into();
+        self.shape.padding.left = padding;
+        self.shape.padding.right = padding;
         self
     }
 }
@@ -133,6 +172,45 @@ impl<M: Model> RectBuilder<M> {
 
     pub fn height(mut self, height: impl Into<RealValue>) -> Self {
         self.shape.height = height.into();
+        self
+    }
+
+    pub fn padding(mut self, padding: impl Into<Padding>) -> Self {
+        self.shape.padding = padding.into();
+        self
+    }
+
+    pub fn padding_top(mut self, top: impl Into<RealValue>) -> Self {
+        self.shape.padding.top = top.into();
+        self
+    }
+
+    pub fn padding_left(mut self, left: impl Into<RealValue>) -> Self {
+        self.shape.padding.left = left.into();
+        self
+    }
+
+    pub fn padding_right(mut self, right: impl Into<RealValue>) -> Self {
+        self.shape.padding.right = right.into();
+        self
+    }
+
+    pub fn padding_bottom(mut self, bottom: impl Into<RealValue>) -> Self {
+        self.shape.padding.bottom = bottom.into();
+        self
+    }
+
+    pub fn padding_top_and_bottom(mut self, padding: impl Into<RealValue>) -> Self {
+        let padding = padding.into();
+        self.shape.padding.top = padding;
+        self.shape.padding.bottom = padding;
+        self
+    }
+
+    pub fn padding_left_and_right(mut self, padding: impl Into<RealValue>) -> Self {
+        let padding = padding.into();
+        self.shape.padding.left = padding;
+        self.shape.padding.right = padding;
         self
     }
 }

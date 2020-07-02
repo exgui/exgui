@@ -34,6 +34,7 @@ pub enum ChangeView {
 pub struct ChangeViewState {
     pub need_rebuild: bool,
     pub need_modify: bool,
+    pub need_recalc: bool,
 }
 
 impl ChangeViewState {

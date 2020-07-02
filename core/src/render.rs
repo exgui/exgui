@@ -10,8 +10,7 @@ pub trait Render {
     }
 
     #[allow(unused_variables)]
-    fn set_dimensions(&mut self, width: u32, height: u32, device_pixel_ratio: f64) {
-    }
+    fn set_dimensions(&mut self, width: u32, height: u32, device_pixel_ratio: f64) {}
 
     fn render(&self, node: &mut dyn CompositeShape) -> Result<(), Self::Error>;
 }

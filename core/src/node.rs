@@ -142,7 +142,7 @@ impl<M: Model> Node<M> {
         }
     }
 
-    pub fn update_view(&mut self) {
+    pub fn update_view(&mut self) -> bool {
         match self {
             Node::Prim(prim) => prim.update_view(),
             Node::Comp(comp) => comp.update_view(),
@@ -176,6 +176,13 @@ impl<M: Model> CompositeShape for Node<M> {
         match self {
             Node::Prim(prim) => CompositeShape::children_mut(prim),
             Node::Comp(comp) => CompositeShape::children_mut(comp),
+        }
+    }
+
+    fn need_recalc(&self) -> Option<bool> {
+        match self {
+            Node::Prim(prim) => CompositeShape::need_recalc(prim),
+            Node::Comp(comp) => CompositeShape::need_recalc(comp),
         }
     }
 }

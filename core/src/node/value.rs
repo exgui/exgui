@@ -91,7 +91,7 @@ impl Default for ValueType {
 }
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
-pub struct Value<T: Debug + Default + Clone + Copy + PartialEq>(pub T, pub ValueType);
+pub struct Value<T>(pub T, pub ValueType);
 
 impl<T: Debug + Default + Clone + Copy + PartialEq> Value<T> {
     pub fn px(v: T) -> Self {
@@ -132,6 +132,26 @@ impl Value<Real> {
         } else {
             false
         }
+    }
+}
+
+impl<T: Copy + Add<Output = T>> Add for Value<T> {
+    type Output = Self;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        assert_eq!(self.1, rhs.1);
+        self.0 = self.0 + rhs.0;
+        self
+    }
+}
+
+impl<T: Copy + Sub<Output = T>> Sub for Value<T> {
+    type Output = Self;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        assert_eq!(self.1, rhs.1);
+        self.0 = self.0 - rhs.0;
+        self
     }
 }
 

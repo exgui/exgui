@@ -4,7 +4,7 @@ use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
 use exgui::{
     builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*,
-    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, CompInner,
+    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, CompInner, Text,
 };
 
 enum CaretAction {
@@ -95,7 +95,7 @@ impl Model for EditBox {
                 }
             }
             Msg::Input(ch) if self.editable => {
-                if ch != '\n' && (ch.is_alphanumeric() || ch.is_whitespace()) {
+                if !(ch.is_ascii_control() || ch.is_control()) {
                     self.caret_action = CaretAction::Input(ch);
                     ChangeView::Modify
                 } else {
@@ -119,6 +119,8 @@ impl Model for EditBox {
             .child(rect()
                 .id("field")
                 .left_top_pos(0, 0)
+                .padding_left_and_right(8.0)
+                .padding_top_and_bottom(4.0)
                 .width(400)
                 .height(40)
                 .stroke((Color::Blue, 2, 0.5))
@@ -201,7 +203,8 @@ impl Model for EditBox {
                 } else {
                     0.0
                 };
-                Self::draw_caret(view, caret_pos);
+                let line_height = text.metrics.map(|m| m.line_height).unwrap_or(text.font_size.0);
+                Self::draw_caret(view, caret_pos, line_height);
             },
             CaretAction::None => (),
         }
@@ -209,16 +212,17 @@ impl Model for EditBox {
 }
 
 impl EditBox {
-    fn draw_caret(view: &mut Node<Self>, caret_pos: Real) {
+    fn draw_caret(view: &mut Node<Self>, caret_pos: Real, line_height: Real) {
+        // let y = text.glyph_positions.ge
         if let Some(path) = view
             .get_prim_mut("caret")
             .and_then(|caret| caret.shape.path_mut())
         {
-            path.cmd[0] = Move([caret_pos, 5.0]);
-            path.cmd[1] = Line([caret_pos, 35.0]);
-        } else if let Some(field) = view.get_prim_mut("field") {
-            field.children.push(
-                path(vec![Move([caret_pos, 5.0]), Line([caret_pos, 35.0])])
+            path.cmd[0] = Move([caret_pos, 0.0]);
+            path.cmd[1] = Line([caret_pos, line_height]);
+        } else if let Some(text) = view.get_prim_mut("text") {
+            text.children.push(
+                path(vec![Move([caret_pos, 0.0]), Line([caret_pos, line_height])])
                     .id("caret")
                     .stroke((Color::Black, 2, 0.5))
                     .build()
@@ -241,7 +245,7 @@ fn main() {
     app.init().unwrap();
 
     let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
-    app.render_mut().load_font("Roboto", font_path).unwrap();
+    app.renderer_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(EditBox::create(()));
     app.run(comp);

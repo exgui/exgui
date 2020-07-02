@@ -1,7 +1,6 @@
-use std::time::Instant;
+use std::{thread, time::{Instant, Duration}};
 
-pub use gl;
-pub use glutin;
+pub use {gl, glutin};
 use glutin::{
     event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState, MouseButton},
     event_loop::{ControlFlow, EventLoop},
@@ -48,7 +47,7 @@ impl AppContext {
 pub struct App<R: Render> {
     event_loop: EventLoop<()>,
     context: AppContext,
-    render: R,
+    renderer: R,
     background_color: Color,
     exit_by_escape: bool,
 }
@@ -79,14 +78,14 @@ impl<R: Render + 'static> App<R> {
     pub fn new(
         window_builder: WindowBuilder,
         context_builder: ContextBuilder<NotCurrent>,
-        render: R,
+        renderer: R,
     ) -> Result<Self, AppError<R::Error>> {
         let event_loop = EventLoop::new();
         let context = AppContext::NotCurrent(Some(context_builder.build_windowed(window_builder, &event_loop)?));
         Ok(App {
             event_loop,
             context,
-            render,
+            renderer,
             background_color: Color::RGBA(0.8, 0.8, 0.8, 1.0),
             exit_by_escape: true,
         })
@@ -114,7 +113,7 @@ impl<R: Render + 'static> App<R> {
             let color = self.background_color.as_arr();
             gl::ClearColor(color[0], color[1], color[2], color[3]);
         }
-        self.render.init().map_err(|err| AppError::RendererError(err))?;
+        self.renderer.init().map_err(|err| AppError::RendererError(err))?;
         Ok(self)
     }
 
@@ -128,7 +127,7 @@ impl<R: Render + 'static> App<R> {
         mut comp: Comp,
         mut proc: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static
     ) -> ! {
-        let App { event_loop, mut context, mut render, exit_by_escape, .. } = self;
+        let App { event_loop, mut context, mut renderer, exit_by_escape, .. } = self;
         let mut mouse_controller = MouseController::new();
         let keyboard_controller = KeyboardController::new();
         let context = context.take_current().expect("PossiblyCurrent context does not exist");//ok_or(AppError::PossiblyCurrentContextNotExist)?;
@@ -189,7 +188,7 @@ impl<R: Render + 'static> App<R> {
                         );
                     }
 
-                    if let AppState::Exit = proc(&mut comp, &context, &mut render) {
+                    if let AppState::Exit = proc(&mut comp, &context, &mut renderer) {
                         *control_flow = ControlFlow::Exit;
                         return;
                     }
@@ -199,11 +198,12 @@ impl<R: Render + 'static> App<R> {
                     comp.send_system_msg(SystemMessage::Draw(elapsed));
                     comp.update_view();
 
-                    render.set_dimensions(size.width, size.height, context.window().scale_factor());
-                    render.render(&mut comp).unwrap_or_else(|err| panic!("Renderer error: {:?}", err));
+                    renderer.set_dimensions(size.width, size.height, context.window().scale_factor());
+                    renderer.render(&mut comp).expect("Renderer error");
 
                     context.swap_buffers().expect("Swap buffers fail");
                 }
+                Event::RedrawEventsCleared => thread::sleep(Duration::from_millis(5)),
                 _ => (),
             }
         })
@@ -213,12 +213,12 @@ impl<R: Render + 'static> App<R> {
         &self.context
     }
 
-    pub fn render(&self) -> &R {
-        &self.render
+    pub fn renderer(&self) -> &R {
+        &self.renderer
     }
 
-    pub fn render_mut(&mut self) -> &mut R {
-        &mut self.render
+    pub fn renderer_mut(&mut self) -> &mut R {
+        &mut self.renderer
     }
 }
 

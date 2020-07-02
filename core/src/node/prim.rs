@@ -10,7 +10,7 @@ pub struct Prim<M: Model> {
     pub shape: Shape,
     pub children: Vec<Node<M>>,
     pub listeners: HashMap<EventName, Vec<Listener<M>>>,
-    model: PhantomData<M>,
+    _model: PhantomData<M>,
 }
 
 impl<M: Model> Prim<M> {
@@ -25,7 +25,7 @@ impl<M: Model> Prim<M> {
             shape,
             children,
             listeners,
-            model: PhantomData
+            _model: PhantomData
         }
     }
 
@@ -130,10 +130,12 @@ impl<M: Model> Prim<M> {
         }
     }
 
-    pub fn update_view(&mut self) {
+    pub fn update_view(&mut self) -> bool {
+        let mut is_updated = false;
         for child in self.children.iter_mut() {
-            child.update_view();
+            is_updated = child.update_view() || is_updated;
         }
+        is_updated
     }
 }
 
@@ -152,5 +154,9 @@ impl<M: Model> CompositeShape for Prim<M> {
 
     fn children_mut(&mut self) -> Option<CompositeShapeIterMut> {
         Some(Box::new(self.children.iter_mut().map(|node| node as &mut dyn CompositeShape)))
+    }
+
+    fn need_recalc(&self) -> Option<bool> {
+        None
     }
 }

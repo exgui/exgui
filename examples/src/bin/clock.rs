@@ -333,7 +333,7 @@ fn main() {
     app.init().unwrap();
 
     let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
-    app.render_mut().load_font("Roboto", font_path).unwrap();
+    app.renderer_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(Clock::create(()));
     app.run(comp);

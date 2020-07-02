@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{path::Path, ops::Mul};
 
 use nanovg::{
     Context, ContextBuilder, Font as NanovgFont, CreateFontError, Frame,
@@ -77,6 +77,19 @@ impl BoundingBox {
     }
 }
 
+impl Mul<BoundingBox> for TransformMatrix {
+    type Output = [(Real, Real); 4];
+
+    fn mul(self, rhs: BoundingBox) -> Self::Output {
+        [
+            self * (rhs.min_x, rhs.min_y),
+            self * (rhs.min_x, rhs.max_y),
+            self * (rhs.max_x, rhs.min_y),
+            self * (rhs.max_x, rhs.max_y),
+        ]
+    }
+}
+
 #[derive(Debug)]
 pub enum NanovgRenderError {
     ContextIsNotInit,
@@ -127,9 +140,10 @@ impl Render for NanovgRender {
                         max_y: self.height,
                     };
 
-                    let mut defaults = ShapeDefaults::default();
-                    Self::recalc_composite(&frame, node, bound, None, TransformMatrix::identity(), &mut defaults);
-
+                    if node.need_recalc().unwrap_or(true) {
+                        let mut defaults = ShapeDefaults::default();
+                        Self::recalc_composite(&frame, node, bound, TransformMatrix::identity(), &mut defaults);
+                    }
                     let mut defaults = ShapeDefaults::default();
                     Self::render_composite(&frame, node, None, &mut defaults);
                 }
@@ -189,7 +203,6 @@ impl NanovgRender {
         frame: &Frame,
         composite: &mut dyn CompositeShape,
         parent_bound: BoundingBox,
-        text: Option<&Text>,
         mut parent_global_transform: TransformMatrix,
         defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
@@ -206,7 +219,13 @@ impl NanovgRender {
                     }
                     rect.width.set_by_pct(parent_bound.width());
                     rect.height.set_by_pct(parent_bound.height());
+                    rect.padding.left.set_by_pct(parent_bound.width());
+                    rect.padding.right.set_by_pct(parent_bound.width());
+                    rect.padding.top.set_by_pct(parent_bound.height());
+                    rect.padding.bottom.set_by_pct(parent_bound.height());
+
                     parent_global_transform = rect.recalculate_transform(parent_global_transform);
+                    parent_global_transform.translate_add(rect.padding.left.val(), rect.padding.top.val());
 
                     bound = BoundingBox {
                         min_x: rect.x.val(),
@@ -223,7 +242,13 @@ impl NanovgRender {
                         circle.cy.0 += parent_bound.min_y;
                     }
                     circle.r.set_by_pct(parent_bound.width().min(parent_bound.height()));
+                    circle.padding.left.set_by_pct(parent_bound.width());
+                    circle.padding.right.set_by_pct(parent_bound.width());
+                    circle.padding.top.set_by_pct(parent_bound.height());
+                    circle.padding.bottom.set_by_pct(parent_bound.height());
+
                     parent_global_transform = circle.recalculate_transform(parent_global_transform);
+                    parent_global_transform.translate_add(circle.padding.left.val(), circle.padding.top.val());
 
                     let (cx, cy, r) = (circle.cx.val(), circle.cy.val(), circle.r.val());
                     bound = BoundingBox {
@@ -257,9 +282,12 @@ impl NanovgRender {
                         (text.x.val(), text.y.val()),
                         &text.content,
                     ).map(|pos| GlyphPos { x: pos.x, min_x: pos.min_x, max_x: pos.max_x }).collect();
-
-                    let text = text.clone();
-                    return Self::calc_inner_bound(frame, composite, bound, Some(&text), parent_global_transform, defaults);
+                    bound = BoundingBox {
+                        min_x: text.x.val(),
+                        min_y: text.y.val(),
+                        max_x: text.x.val() + text.glyph_positions.last().map(|pos| pos.max_x).unwrap_or(0.0),
+                        max_y: text.y.val() + metrics.line_height,
+                    };
                 }
                 Shape::Path(path) => {
                     parent_global_transform = path.recalculate_transform(parent_global_transform);
@@ -313,15 +341,15 @@ impl NanovgRender {
             }
         }
 
-        let inner_bound = Self::calc_inner_bound(frame, composite, bound, text, parent_global_transform, defaults);
+        let inner_bound = Self::calc_inner_bound(frame, composite, bound, parent_global_transform, defaults);
 
         if let Some(shape) = composite.shape_mut() {
             match shape {
                 Shape::Rect(rect) => {
-                    rect.x.set_by_auto(inner_bound.min_x);
-                    rect.y.set_by_auto(inner_bound.min_y);
-                    rect.width.set_by_auto(inner_bound.width());
-                    rect.height.set_by_auto(inner_bound.height());
+                    rect.x.set_by_auto(inner_bound.min_x - rect.padding.left.val());
+                    rect.y.set_by_auto(inner_bound.min_y - rect.padding.left.val());
+                    rect.width.set_by_auto(inner_bound.max_x - rect.x.val() + rect.padding.left_and_right().val());
+                    rect.height.set_by_auto(inner_bound.max_y - rect.y.val() + rect.padding.top_and_bottom().val());
 
                     bound = BoundingBox {
                         min_x: rect.x.val(),
@@ -331,9 +359,12 @@ impl NanovgRender {
                     };
                 }
                 Shape::Circle(circle) => {
-                    circle.cx.set_by_auto(inner_bound.min_x + inner_bound.width() / 2.0);
-                    circle.cy.set_by_auto(inner_bound.min_y + inner_bound.height() / 2.0);
-                    circle.r.set_by_auto(inner_bound.width().max(inner_bound.height()) / 2.0);
+                    circle.cx.set_by_auto(inner_bound.min_x + inner_bound.width() / 2.0 + circle.padding.left.val());
+                    circle.cy.set_by_auto(inner_bound.min_y + inner_bound.height() / 2.0 + circle.padding.top.val());
+                    circle.r.set_by_auto(
+                        (inner_bound.width() + circle.padding.left_and_right().val())
+                            .max(inner_bound.height() + circle.padding.top_and_bottom().val()) / 2.0
+                    );
 
                     let (cx, cy, r) = (circle.cx.val(), circle.cy.val(), circle.r.val());
                     bound = BoundingBox {
@@ -342,6 +373,22 @@ impl NanovgRender {
                         max_x: cx + r,
                         max_y: cy + r,
                     };
+                }
+                Shape::Text(text) => {
+                    let transform = text.transform.matrix();
+                    let inner_bound_points = transform * inner_bound;
+                    let bound_points = transform * bound;
+
+                    bound.min_x = bound_points[0].0;
+                    bound.max_x = bound.min_x;
+                    bound.min_y = bound_points[0].1;
+                    bound.max_y = bound.min_y ;
+                    for idx in 0..4 {
+                        bound.min_x = bound.min_x.min(bound_points[idx].0).min(inner_bound_points[idx].0);
+                        bound.max_x = bound.max_x.max(bound_points[idx].0).max(inner_bound_points[idx].0);
+                        bound.min_y = bound.min_y.min(bound_points[idx].1).min(inner_bound_points[idx].1);
+                        bound.max_y = bound.max_y.max(bound_points[idx].1).max(inner_bound_points[idx].1);
+                    }
                 }
                 _ => (),
             }
@@ -353,7 +400,6 @@ impl NanovgRender {
         frame: &Frame,
         composite: &mut dyn CompositeShape,
         bound: BoundingBox,
-        text: Option<&Text>,
         parent_global_transform: TransformMatrix,
         defaults: &mut ShapeDefaults,
     ) -> BoundingBox {
@@ -361,7 +407,7 @@ impl NanovgRender {
         if let Some(children) = composite.children_mut() {
             for child in children {
                 child_bounds.push(
-                    Self::recalc_composite(frame, child, bound, text, parent_global_transform, defaults)
+                    Self::recalc_composite(frame, child, bound, parent_global_transform, defaults)
                 );
             }
         }
@@ -552,7 +598,9 @@ impl NanovgRender {
     }
 
     fn nanovg_transform(transform: &Transform) -> Option<NanovgTransform> {
-        if !transform.is_not_exist() {
+        if transform.is_not_exist() {
+            None
+        } else {
             let mut nanovg_transform = NanovgTransform::new();
             if transform.is_absolute() {
                 nanovg_transform.absolute();
@@ -562,8 +610,6 @@ impl NanovgRender {
                 .unwrap_or_else(|| transform.matrix())
                 .matrix;
             Some(nanovg_transform)
-        } else {
-            None
         }
     }
 

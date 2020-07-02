@@ -31,7 +31,8 @@ pub trait CompApi: AsAny {
     fn as_composite_shape(&self) -> Option<&dyn CompositeShape>;
     fn as_composite_shape_mut(&mut self) -> Option<&mut dyn CompositeShape>;
     fn send_system_msg(&mut self, msg: SystemMessage);
-    fn update_view(&mut self);
+    fn update_view(&mut self) -> bool;
+    fn need_recalc(&self) -> bool;
 }
 
 pub struct Comp {
@@ -100,8 +101,8 @@ impl Comp {
         self.inner.send_system_msg(msg);
     }
 
-    pub fn update_view(&mut self) {
-        self.inner.update_view();
+    pub fn update_view(&mut self) -> bool {
+        self.inner.update_view()
     }
 }
 
@@ -120,6 +121,10 @@ impl CompositeShape for Comp {
 
     fn children_mut(&mut self) -> Option<CompositeShapeIterMut> {
         self.inner.as_composite_shape_mut()?.children_mut()
+    }
+
+    fn need_recalc(&self) -> Option<bool> {
+        Some(self.inner.need_recalc())
     }
 }
 
@@ -141,7 +146,7 @@ impl<M: Model> CompInner<M> {
             props: None,
             model,
             view: Some(view),
-            view_state: Default::default(),
+            view_state: ChangeViewState { need_rebuild: true, ..Default::default() },
             transform: Default::default(),
         }
     }
@@ -191,13 +196,15 @@ impl<M: Model> CompApi for CompInner<M> {
         }
     }
 
-    fn update_view(&mut self) {
+    fn update_view(&mut self) -> bool {
         let mut need_to_propagate_update = true;
+        let mut is_updated = false;
         if self.view_state.need_rebuild {
             let view = self.model.build_view();
             self.view = Some(view);
             self.view_state.need_rebuild = false;
             need_to_propagate_update = false;
+            is_updated = true;
         }
 
         if self.view_state.need_modify {
@@ -205,12 +212,19 @@ impl<M: Model> CompApi for CompInner<M> {
             self.model.modify_view(&mut view);
             self.view = Some(view);
             self.view_state.need_modify = false;
+            is_updated = true;
         }
 
         if need_to_propagate_update {
             if let Some(view) = self.view.as_mut() {
-                view.update_view();
+                is_updated = view.update_view() || is_updated;
             }
         }
+        self.view_state.need_recalc = is_updated;
+        is_updated
+    }
+
+    fn need_recalc(&self) -> bool {
+        self.view_state.need_recalc
     }
 }

@@ -1,4 +1,4 @@
-use crate::node::{Real, RealValue, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Real, RealValue, Fill, Padding, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Circle {
@@ -6,6 +6,7 @@ pub struct Circle {
     pub cx: RealValue,
     pub cy: RealValue,
     pub r: RealValue,
+    pub padding: Padding,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub transform: Transform,
