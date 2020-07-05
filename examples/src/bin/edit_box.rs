@@ -11,6 +11,8 @@ enum CaretAction {
     Put(Real),
     MoveLeft,
     MoveRight,
+    MoveStart,
+    MoveEnd,
     Input(char),
     Delete,
     Backspace,
@@ -40,6 +42,13 @@ impl Caret {
             blink: Duration::default(),
             show: true,
         }
+    }
+
+    fn reset(&mut self) {
+        self.idx = 0;
+        self.action = CaretAction::None;
+        self.reset_blink();
+        self.show = false;
     }
 
     fn reset_blink(&mut self) {
@@ -78,6 +87,7 @@ struct EditBox {
 #[derive(Clone)]
 pub enum Msg {
     OnFocus(MousePos),
+    OnBlur,
     OnKeyDown(VirtualKeyCode),
     Input(char),
     Draw(Duration),
@@ -109,13 +119,13 @@ impl Model for EditBox {
             Msg::OnFocus(pos) => {
                 self.focus = true;
                 if self.editable {
-                    self.caret.update_action(CaretAction::Put(pos.x - 50.0));
+                    self.caret.update_action(CaretAction::Put(pos.x));
                     ChangeView::Modify
                 } else {
                     ChangeView::None
                 }
             },
-            Msg::OnKeyDown(keycode) if self.editable => {
+            Msg::OnKeyDown(keycode) if self.focus => {
                 match keycode {
                     VirtualKeyCode::Left => {
                         self.caret.update_action(CaretAction::MoveLeft);
@@ -125,11 +135,19 @@ impl Model for EditBox {
                         self.caret.update_action(CaretAction::MoveRight);
                         ChangeView::Modify
                     }
-                    VirtualKeyCode::Delete => {
+                    VirtualKeyCode::Home => {
+                        self.caret.update_action(CaretAction::MoveStart);
+                        ChangeView::Modify
+                    }
+                    VirtualKeyCode::End => {
+                        self.caret.update_action(CaretAction::MoveEnd);
+                        ChangeView::Modify
+                    }
+                    VirtualKeyCode::Delete if self.editable => {
                         self.caret.update_action(CaretAction::Delete);
                         ChangeView::Modify
                     }
-                    VirtualKeyCode::Backspace => {
+                    VirtualKeyCode::Backspace if self.editable => {
                         self.caret.update_action(CaretAction::Backspace);
                         ChangeView::Modify
                     }
@@ -144,7 +162,7 @@ impl Model for EditBox {
                     ChangeView::None
                 }
             }
-            Msg::Draw(elapsed) if self.editable => {
+            Msg::Draw(elapsed) if self.focus => {
                 self.caret.blink += elapsed;
                 if let CaretAction::Redraw = self.caret.action {
                     ChangeView::Modify
@@ -154,6 +172,12 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
+            }
+            Msg::OnBlur if self.focus => {
+                self.focus = false;
+                self.caret.reset();
+                self.caret.action = CaretAction::Blink;
+                ChangeView::Modify
             }
             _ => ChangeView::None,
         }
@@ -171,6 +195,7 @@ impl Model for EditBox {
                 .height(40)
                 .stroke((Color::Blue, 2, 0.5))
                 .on_mouse_down(|case| Msg::OnFocus(case.event.pos))
+                .on_blur(|_| Msg::OnBlur)
                 .on_key_down(|case| {
                     if let Some(keycode) = case.event.keycode {
                         Msg::OnKeyDown(keycode)
@@ -199,7 +224,12 @@ impl Model for EditBox {
             .expect("Text primitive expected");
 
         match self.caret.action.take() {
-            CaretAction::Put(focus_pos) => {
+            CaretAction::Put(mut focus_pos) => {
+                let matrix = text.transform.global_matrix().unwrap_or_else(|| text.transform.matrix());
+                if !matrix.is_identity() {
+                    focus_pos = focus_pos - matrix.translate_xy().0;
+                }
+
                 if let Some(idx) = text.glyph_positions.iter().position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x) {
                     let pos = text.glyph_positions[idx];
                     let before = focus_pos - pos.min_x;
@@ -223,6 +253,14 @@ impl Model for EditBox {
             },
             CaretAction::MoveRight => {
                 self.caret.idx = self.caret.idx + if text.glyph_positions.len() > self.caret.idx { 1 } else { 0 };
+                self.caret.update_action(CaretAction::Redraw);
+            },
+            CaretAction::MoveStart => {
+                self.caret.idx = 0;
+                self.caret.update_action(CaretAction::Redraw);
+            },
+            CaretAction::MoveEnd => {
+                self.caret.idx = text.glyph_positions.len();
                 self.caret.update_action(CaretAction::Redraw);
             },
             CaretAction::Input(ch) => {

@@ -18,6 +18,7 @@ impl EventName {
     pub const ON_KEY_UP: EventName = EventName("OnKeyUp");
     pub const ON_CLICK: EventName = EventName("OnClick");
     pub const ON_INPUT_CHAR: EventName = EventName("OnInputChar");
+    pub const ON_BLUR: EventName = EventName("OnBlur");
 }
 
 impl Deref for EventName {
@@ -37,6 +38,7 @@ pub enum Listener<M: Model> {
     OnKeyUp(fn (On<M, KeyboardEvent>) -> M::Message),
     OnClick(fn (On<M, MouseDown>) -> M::Message),
     OnInputChar(fn (On<M, char>) -> M::Message),
+    OnBlur(fn (On<M, MouseDown>) -> M::Message),
 }
 
 impl<M: Model> Listener<M> {
@@ -49,6 +51,7 @@ impl<M: Model> Listener<M> {
             Listener::OnKeyUp(_) => EventName::ON_KEY_UP,
             Listener::OnClick(_) => EventName::ON_CLICK,
             Listener::OnInputChar(_) => EventName::ON_INPUT_CHAR,
+            Listener::OnBlur(_) => EventName::ON_BLUR,
         }
     }
 }

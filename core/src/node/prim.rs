@@ -65,6 +65,16 @@ impl<M: Model> Prim<M> {
                                 outputs.push(msg);
                             }
                         }
+                    } else {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_BLUR) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnBlur(func) => func(On { prim: self, event: press }),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
+                        }
                     }
                     InputEvent::KeyDown(event) => {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {

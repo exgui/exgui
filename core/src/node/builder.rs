@@ -51,4 +51,9 @@ pub trait EventHandler<M: Model>: Sized {
         self.add_listener(Listener::OnInputChar(trigger));
         self
     }
+
+    fn on_blur(mut self, trigger: fn(On<M, MouseDown>) -> M::Message) -> Self {
+        self.add_listener(Listener::OnBlur(trigger));
+        self
+    }
 }
