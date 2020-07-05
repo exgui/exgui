@@ -1,8 +1,9 @@
-use crate::node::{Clip, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Real, Clip, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Group {
     pub id: Option<String>,
+    pub transparency: Option<Real>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub clip: Clip,

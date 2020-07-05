@@ -7,6 +7,7 @@ pub struct Circle {
     pub cy: RealValue,
     pub r: RealValue,
     pub padding: Padding,
+    pub transparency: Real,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub clip: Clip,

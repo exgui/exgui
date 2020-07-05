@@ -4,6 +4,7 @@ use crate::node::{Clip, Real, Fill, Stroke, Transform, TransformMatrix};
 pub struct Path {
     pub id: Option<String>,
     pub cmd: Vec<PathCommand>,
+    pub transparency: Real,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub clip: Clip,

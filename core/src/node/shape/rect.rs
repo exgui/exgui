@@ -8,6 +8,7 @@ pub struct Rect {
     pub width: RealValue,
     pub height: RealValue,
     pub padding: Padding,
+    pub transparency: Real,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub clip: Clip,

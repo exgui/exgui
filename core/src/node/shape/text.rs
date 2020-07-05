@@ -25,6 +25,7 @@ pub struct Text {
     pub font_name: String,
     pub font_size: RealValue,
     pub align: (AlignHor, AlignVer),
+    pub transparency: Real,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
     pub clip: Clip,

@@ -155,6 +155,7 @@ impl Render for NanovgRender {
 
 #[derive(Default, Clone)]
 pub struct ShapeDefaults {
+    pub transparency: Real,
     pub fill: Option<Fill>,
     pub stroke: Option<Stroke>,
     pub clip: Clip,
@@ -297,11 +298,14 @@ impl NanovgRender {
                     Self::set_by_pct_clip(&mut group.clip, &parent_bound);
                     parent_global_transform = group.recalculate_transform(parent_global_transform);
 
-                    if let Some(ref fill) = group.fill {
-                        defaults.fill = Some(fill.clone());
+                    if let Some(transparency) = group.transparency {
+                        defaults.transparency = transparency;
                     }
-                    if let Some(ref stroke) = group.stroke {
-                        defaults.stroke = Some(stroke.clone());
+                    if let Some(fill) = group.fill {
+                        defaults.fill = Some(fill);
+                    }
+                    if let Some(stroke) = group.stroke {
+                        defaults.stroke = Some(stroke);
                     }
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
@@ -456,7 +460,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(rect.clip, &rect.transform, defaults),
+                        Self::path_options(rect.transparency, rect.clip, &rect.transform, defaults),
                     );
                 }
                 Shape::Circle(circle) => {
@@ -473,7 +477,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(circle.clip, &circle.transform, defaults),
+                        Self::path_options(circle.transparency, circle.clip, &circle.transform, defaults),
                     );
                 }
                 Shape::Path(path) => {
@@ -554,7 +558,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(path.clip, &path.transform, defaults),
+                        Self::path_options(path.transparency, path.clip, &path.transform, defaults),
                     );
                 }
                 Shape::Text(this_text) => {
@@ -586,11 +590,14 @@ impl NanovgRender {
 //                    }
 //                }
                 Shape::Group(group) => {
-                    if let Some(ref fill) = group.fill {
-                        defaults.fill = Some(fill.clone());
+                    if let Some(transparency) = group.transparency {
+                        defaults.transparency = transparency;
                     }
-                    if let Some(ref stroke) = group.stroke {
-                        defaults.stroke = Some(stroke.clone());
+                    if let Some(fill) = group.fill {
+                        defaults.fill = Some(fill);
+                    }
+                    if let Some(stroke) = group.stroke {
+                        defaults.stroke = Some(stroke);
                     }
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
@@ -650,8 +657,9 @@ impl NanovgRender {
         }
     }
 
-    fn path_options(clip: Clip, transform: &Transform, defaults: &ShapeDefaults) -> PathOptions {
+    fn path_options(transparency: Real, clip: Clip, transform: &Transform, defaults: &ShapeDefaults) -> PathOptions {
         PathOptions {
+            alpha: (1.0 - transparency) * (1.0 - defaults.transparency),
             clip: Self::nanovg_clip(&clip.or(defaults.clip)),
             transform: Self::nanovg_transform(transform),
             ..Default::default()
@@ -679,13 +687,15 @@ impl NanovgRender {
     }
 
     fn text_options(text: &Text, defaults: &ShapeDefaults) -> TextOptions {
-        let color = ToNanovgPaint::to_nanovg_color(
+        let mut color = ToNanovgPaint::to_nanovg_color(
             text.fill.as_ref().or(defaults.fill.as_ref()).and_then(|fill| if let Paint::Color(color) = fill.paint {
                 Some(color)
             } else {
                 None
             }).unwrap_or_default()
         );
+        color.set_alpha(color.alpha() * (1.0 - defaults.transparency) * (1.0 - text.transparency));
+
         let mut align = Alignment::new();
         align = match text.align.0 {
             AlignHor::Left => align.left(),
