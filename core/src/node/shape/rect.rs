@@ -1,4 +1,4 @@
-use crate::{Clip, Real, RealValue, Fill, Padding, Stroke, Transform, TransformMatrix};
+use crate::{Clip, Real, RealValue, Rounding, Fill, Padding, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Rect {
@@ -7,6 +7,7 @@ pub struct Rect {
     pub y: RealValue,
     pub width: RealValue,
     pub height: RealValue,
+    pub rounding: Option<Rounding>,
     pub padding: Padding,
     pub transparency: Real,
     pub stroke: Option<Stroke>,

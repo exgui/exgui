@@ -1,6 +1,9 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use exgui_core::{Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip};
+use exgui_core::{
+    Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill,
+    AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip, Rounding,
+};
 pub use exgui_core::builder::*;
 
 pub struct PrimBuilder<M: Model> {
@@ -174,6 +177,47 @@ impl<M: Model> RectBuilder<M> {
 
     pub fn height(mut self, height: impl Into<RealValue>) -> Self {
         self.shape.height = height.into();
+        self
+    }
+
+    pub fn rounding(mut self, rounding: impl Into<Rounding>) -> Self {
+        self.shape.rounding = Some(rounding.into());
+        self
+    }
+
+    pub fn rounding_top_left(mut self, radius: impl Into<RealValue>) -> Self {
+        if let Some(rounding) = self.shape.rounding.as_mut() {
+            rounding.top_left = radius.into();
+        } else {
+            self.shape.rounding = Some(Rounding { top_left: radius.into(), ..Default::default() });
+        }
+        self
+    }
+
+    pub fn rounding_top_right(mut self, radius: impl Into<RealValue>) -> Self {
+        if let Some(rounding) = self.shape.rounding.as_mut() {
+            rounding.top_right = radius.into();
+        } else {
+            self.shape.rounding = Some(Rounding { top_right: radius.into(), ..Default::default() });
+        }
+        self
+    }
+
+    pub fn rounding_bottom_left(mut self, radius: impl Into<RealValue>) -> Self {
+        if let Some(rounding) = self.shape.rounding.as_mut() {
+            rounding.bottom_left = radius.into();
+        } else {
+            self.shape.rounding = Some(Rounding { bottom_left: radius.into(), ..Default::default() });
+        }
+        self
+    }
+
+    pub fn rounding_bottom_right(mut self, radius: impl Into<RealValue>) -> Self {
+        if let Some(rounding) = self.shape.rounding.as_mut() {
+            rounding.bottom_right = radius.into();
+        } else {
+            self.shape.rounding = Some(Rounding { bottom_right: radius.into(), ..Default::default() });
+        }
         self
     }
 

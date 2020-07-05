@@ -170,6 +170,36 @@ impl From<i32> for RealValue {
     }
 }
 
+impl From<u32> for RealValue {
+    fn from(v: u32) -> Self {
+        RealValue::px(v as Real)
+    }
+}
+
+impl From<i64> for RealValue {
+    fn from(v: i64) -> Self {
+        RealValue::px(v as Real)
+    }
+}
+
+impl From<u64> for RealValue {
+    fn from(v: u64) -> Self {
+        RealValue::px(v as Real)
+    }
+}
+
+impl From<isize> for RealValue {
+    fn from(v: isize) -> Self {
+        RealValue::px(v as Real)
+    }
+}
+
+impl From<usize> for RealValue {
+    fn from(v: usize) -> Self {
+        RealValue::px(v as Real)
+    }
+}
+
 impl From<Pct<Real>> for RealValue {
     fn from(v: Pct<Real>) -> Self {
         RealValue::pct(v.0)

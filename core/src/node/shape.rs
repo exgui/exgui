@@ -4,6 +4,7 @@ pub use self::{
     path::*,
     group::*,
     padding::*,
+    rounding::*,
     text::*,
     paint::*,
     stroke::*,
@@ -17,6 +18,7 @@ pub mod circle;
 pub mod path;
 pub mod group;
 pub mod padding;
+pub mod rounding;
 pub mod text;
 pub mod paint;
 pub mod stroke;

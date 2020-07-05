@@ -222,6 +222,13 @@ impl NanovgRender {
                     }
                     rect.width.set_by_pct(parent_bound.width());
                     rect.height.set_by_pct(parent_bound.height());
+                    if let Some(rounding) = &mut rect.rounding {
+                        let radius = parent_bound.width().min(parent_bound.height());
+                        rounding.top_left.set_by_pct(radius);
+                        rounding.top_right.set_by_pct(radius);
+                        rounding.bottom_left.set_by_pct(radius);
+                        rounding.bottom_right.set_by_pct(radius);
+                    }
                     Self::set_by_pct_padding(&mut rect.padding, &parent_bound);
                     Self::set_by_pct_clip(&mut rect.clip, &parent_bound);
 
@@ -449,7 +456,16 @@ impl NanovgRender {
                 Shape::Rect(rect) => {
                     frame.path(
                         |path| {
-                            path.rect((rect.x.val(), rect.y.val()), (rect.width.val(), rect.height.val()));
+                            if let Some(rounding) = rect.rounding {
+                                path.rounded_rect_varying(
+                                    (rect.x.val(), rect.y.val()),
+                                    (rect.width.val(), rect.height.val()),
+                                    (rounding.top_left.val(), rounding.top_right.val()),
+                                (rounding.bottom_left.val(), rounding.bottom_right.val()),
+                                );
+                            } else {
+                                path.rect((rect.x.val(), rect.y.val()), (rect.width.val(), rect.height.val()));
+                            }
                             if let Some(fill) = rect.fill.as_ref().or(defaults.fill.as_ref()) {
                                 path.fill(ToNanovgPaint(fill.paint), Default::default());
                             };

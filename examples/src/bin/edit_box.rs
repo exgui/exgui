@@ -193,6 +193,7 @@ impl Model for EditBox {
                 .padding_top_and_bottom(4.0)
                 .width(400)
                 .height(40)
+                .rounding(4)
                 .stroke((Color::Blue, 2, 0.5))
                 .on_mouse_down(|case| Msg::OnFocus(case.event.pos))
                 .on_blur(|_| Msg::OnBlur)
