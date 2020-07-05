@@ -1,6 +1,7 @@
 use crate::{Model, SystemMessage};
 pub use self::{
     comp::*,
+    clip::*,
     prim::*,
     shape::*,
     value::*,
@@ -10,6 +11,7 @@ pub use self::{
 
 pub mod builder;
 pub mod comp;
+pub mod clip;
 pub mod prim;
 pub mod shape;
 pub mod value;

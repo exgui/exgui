@@ -1,4 +1,4 @@
-use crate::node::{Real, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Real, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Path {
@@ -6,6 +6,7 @@ pub struct Path {
     pub cmd: Vec<PathCommand>,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub clip: Clip,
     pub transform: Transform,
 }
 
@@ -17,6 +18,9 @@ impl Path {
     }
 
     pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        if let Some(transform) = self.clip.transform_mut() {
+            transform.calculate_global(parent_global);
+        }
         self.transform.calculate_global(parent_global)
     }
 

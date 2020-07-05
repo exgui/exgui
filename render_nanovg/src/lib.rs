@@ -4,11 +4,12 @@ use nanovg::{
     Context, ContextBuilder, Font as NanovgFont, CreateFontError, Frame,
     Color as NanovgColor, Gradient as NanovgGradient, Paint as NanovgPaint,
     StrokeOptions, PathOptions, TextOptions, Alignment,
-    LineCap as NanovgLineCap, LineJoin as NanovgLineJoin, Transform as NanovgTransform,
+    LineCap as NanovgLineCap, LineJoin as NanovgLineJoin, Transform as NanovgTransform, Clip as NanovgClip,
+    Scissor as NanovgScissor,
 };
 use exgui_core::{
     Real, GlyphPos, CompositeShape, Shape, Paint, Color, Gradient, Stroke, Fill, Text, AlignHor,
-    AlignVer, Transform, LineCap, LineJoin, Render, TransformMatrix, TextMetrics,
+    AlignVer, Transform, LineCap, LineJoin, Render, TransformMatrix, TextMetrics, Clip, Padding,
 };
 
 struct ToNanovgPaint(Paint);
@@ -156,6 +157,7 @@ impl Render for NanovgRender {
 pub struct ShapeDefaults {
     pub fill: Option<Fill>,
     pub stroke: Option<Stroke>,
+    pub clip: Clip,
 }
 
 impl NanovgRender {
@@ -219,10 +221,8 @@ impl NanovgRender {
                     }
                     rect.width.set_by_pct(parent_bound.width());
                     rect.height.set_by_pct(parent_bound.height());
-                    rect.padding.left.set_by_pct(parent_bound.width());
-                    rect.padding.right.set_by_pct(parent_bound.width());
-                    rect.padding.top.set_by_pct(parent_bound.height());
-                    rect.padding.bottom.set_by_pct(parent_bound.height());
+                    Self::set_by_pct_padding(&mut rect.padding, &parent_bound);
+                    Self::set_by_pct_clip(&mut rect.clip, &parent_bound);
 
                     parent_global_transform = rect.recalculate_transform(parent_global_transform);
                     parent_global_transform.translate_add(rect.padding.left.val(), rect.padding.top.val());
@@ -242,10 +242,8 @@ impl NanovgRender {
                         circle.cy.0 += parent_bound.min_y;
                     }
                     circle.r.set_by_pct(parent_bound.width().min(parent_bound.height()));
-                    circle.padding.left.set_by_pct(parent_bound.width());
-                    circle.padding.right.set_by_pct(parent_bound.width());
-                    circle.padding.top.set_by_pct(parent_bound.height());
-                    circle.padding.bottom.set_by_pct(parent_bound.height());
+                    Self::set_by_pct_padding(&mut circle.padding, &parent_bound);
+                    Self::set_by_pct_clip(&mut circle.clip, &parent_bound);
 
                     parent_global_transform = circle.recalculate_transform(parent_global_transform);
                     parent_global_transform.translate_add(circle.padding.left.val(), circle.padding.top.val());
@@ -265,6 +263,8 @@ impl NanovgRender {
                     if text.y.set_by_pct(parent_bound.height()) {
                         text.y.0 += parent_bound.min_y;
                     }
+                    Self::set_by_pct_clip(&mut text.clip, &parent_bound);
+
                     parent_global_transform = text.recalculate_transform(parent_global_transform);
 
                     let nanovg_font = NanovgFont::find(frame.context(), &text.font_name)
@@ -290,9 +290,11 @@ impl NanovgRender {
                     };
                 }
                 Shape::Path(path) => {
+                    Self::set_by_pct_clip(&mut path.clip, &parent_bound);
                     parent_global_transform = path.recalculate_transform(parent_global_transform);
                 }
                 Shape::Group(group) => {
+                    Self::set_by_pct_clip(&mut group.clip, &parent_bound);
                     parent_global_transform = group.recalculate_transform(parent_global_transform);
 
                     if let Some(ref fill) = group.fill {
@@ -300,6 +302,9 @@ impl NanovgRender {
                     }
                     if let Some(ref stroke) = group.stroke {
                         defaults.stroke = Some(stroke.clone());
+                    }
+                    if !group.clip.is_none() {
+                        defaults.clip = group.clip;
                     }
                 }
 //                Shape::Word(word) => {
@@ -451,7 +456,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(&rect.transform),
+                        Self::path_options(rect.clip, &rect.transform, defaults),
                     );
                 }
                 Shape::Circle(circle) => {
@@ -468,7 +473,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(&circle.transform),
+                        Self::path_options(circle.clip, &circle.transform, defaults),
                     );
                 }
                 Shape::Path(path) => {
@@ -549,7 +554,7 @@ impl NanovgRender {
                                 );
                             }
                         },
-                        Self::path_options(&path.transform),
+                        Self::path_options(path.clip, &path.transform, defaults),
                     );
                 }
                 Shape::Text(this_text) => {
@@ -587,6 +592,9 @@ impl NanovgRender {
                     if let Some(ref stroke) = group.stroke {
                         defaults.stroke = Some(stroke.clone());
                     }
+                    if !group.clip.is_none() {
+                        defaults.clip = group.clip;
+                    }
                 },
             }
         }
@@ -594,6 +602,22 @@ impl NanovgRender {
             for child in children {
                 Self::render_composite(frame, child, text, defaults);
             }
+        }
+    }
+
+    fn set_by_pct_padding(padding: &mut Padding, parent_bound: &BoundingBox) {
+        padding.left.set_by_pct(parent_bound.width());
+        padding.right.set_by_pct(parent_bound.width());
+        padding.top.set_by_pct(parent_bound.height());
+        padding.bottom.set_by_pct(parent_bound.height());
+    }
+
+    fn set_by_pct_clip(clip: &mut Clip, parent_bound: &BoundingBox) {
+        if let Clip::Scissor(scissor) = clip {
+            scissor.x.set_by_pct(parent_bound.width());
+            scissor.y.set_by_pct(parent_bound.height());
+            scissor.width.set_by_pct(parent_bound.width());
+            scissor.height.set_by_pct(parent_bound.height());
         }
     }
 
@@ -613,8 +637,22 @@ impl NanovgRender {
         }
     }
 
-    fn path_options(transform: &Transform) -> PathOptions {
+    fn nanovg_clip(clip: &Clip) -> NanovgClip {
+        match clip {
+            Clip::Scissor(scissor) => NanovgClip::Scissor(NanovgScissor {
+                x: scissor.x.val(),
+                y: scissor.y.val(),
+                width: scissor.width.val(),
+                height: scissor.height.val(),
+                transform: Self::nanovg_transform(&scissor.transform),
+            }),
+            Clip::None => NanovgClip::None,
+        }
+    }
+
+    fn path_options(clip: Clip, transform: &Transform, defaults: &ShapeDefaults) -> PathOptions {
         PathOptions {
+            clip: Self::nanovg_clip(&clip.or(defaults.clip)),
             transform: Self::nanovg_transform(transform),
             ..Default::default()
         }
@@ -665,6 +703,7 @@ impl NanovgRender {
             color,
             size: text.font_size.val(),
             align,
+            clip: Self::nanovg_clip(&text.clip.or(defaults.clip)),
             transform: Self::nanovg_transform(&text.transform),
             ..Default::default()
         }

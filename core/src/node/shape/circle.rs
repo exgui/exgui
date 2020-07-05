@@ -1,4 +1,4 @@
-use crate::node::{Real, RealValue, Fill, Padding, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Real, RealValue, Fill, Padding, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Circle {
@@ -9,6 +9,7 @@ pub struct Circle {
     pub padding: Padding,
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub clip: Clip,
     pub transform: Transform,
 }
 
@@ -20,6 +21,9 @@ impl Circle {
     }
 
     pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        if let Some(transform) = self.clip.transform_mut() {
+            transform.calculate_global(parent_global);
+        }
         self.transform.calculate_global(parent_global)
     }
 

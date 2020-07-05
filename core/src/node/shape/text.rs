@@ -1,4 +1,4 @@
-use crate::node::{Real, RealValue, ConvertTo, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Real, RealValue, ConvertTo, Fill, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct GlyphPos {
@@ -27,6 +27,7 @@ pub struct Text {
     pub align: (AlignHor, AlignVer),
     pub stroke: Option<Stroke>,
     pub fill: Option<Fill>,
+    pub clip: Clip,
     pub transform: Transform,
 }
 
@@ -38,6 +39,9 @@ impl Text {
     }
 
     pub fn recalculate_transform(&mut self, parent_global: TransformMatrix) -> TransformMatrix {
+        if let Some(transform) = self.clip.transform_mut() {
+            transform.calculate_global(parent_global);
+        }
         self.transform.calculate_global(parent_global)
     }
 
@@ -45,6 +49,27 @@ impl Text {
     pub fn intersect(&self, _x: Real, _y: Real) -> bool {
         // TODO: calvulate intersect
         false
+    }
+
+    pub fn insert(&mut self, idx: usize, ch: char) {
+        let mut content: String = self.content.chars().take(idx).collect();
+        let tail = &self.content[content.len()..];
+        content.push(ch);
+        content.push_str(tail);
+        self.content = content;
+    }
+
+    pub fn push(&mut self, ch: char) {
+        self.content.push(ch);
+    }
+
+    pub fn remove(&mut self, idx: usize) {
+        self.content = self
+            .content
+            .chars()
+            .enumerate()
+            .filter_map(|(i, ch)| if i != idx { Some(ch) } else { None })
+            .collect();
     }
 }
 

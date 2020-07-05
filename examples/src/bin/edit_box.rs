@@ -4,7 +4,7 @@ use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
 use exgui::{
     builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*,
-    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, CompInner, Text,
+    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage,
 };
 
 enum CaretAction {
@@ -133,10 +133,14 @@ impl Model for EditBox {
                     }
                 })
                 .on_input_char(|case| Msg::Input(case.event))
-                .child(text(&self.initial_text)
-                    .id("text")
-                    .font_name("Roboto")
-                    .font_size(32),
+                .child(group()
+                    .id("clip_area")
+                    .clip(-1, 0, 400 - 16, 40 - 8)
+                    .child(text(&self.initial_text)
+                        .id("text")
+                        .font_name("Roboto")
+                        .font_size(32)
+                    )
                 )
             )
             .build()
@@ -177,23 +181,23 @@ impl Model for EditBox {
             },
             CaretAction::Input(ch) => {
                 if self.caret_idx < text.glyph_positions.len() {
-                    text.content.insert(self.caret_idx, ch);
+                    text.insert(self.caret_idx, ch);
                 } else {
-                    text.content.push(ch);
+                    text.push(ch);
                 }
                 self.caret_idx += 1;
                 self.caret_action = CaretAction::Redraw;
             }
             CaretAction::Delete => {
                 if self.caret_idx < text.glyph_positions.len() {
-                    text.content.remove(self.caret_idx);
+                    text.remove(self.caret_idx);
                     self.caret_action = CaretAction::Redraw;
                 }
             }
             CaretAction::Backspace => {
                 if self.caret_idx > 0 {
                     self.caret_idx -= 1;
-                    text.content.remove(self.caret_idx);
+                    text.remove(self.caret_idx);
                     self.caret_action = CaretAction::Redraw;
                 }
             }
@@ -203,8 +207,9 @@ impl Model for EditBox {
                 } else {
                     0.0
                 };
+                let text_end_pos = text.glyph_positions.last().map(|pos| pos.max_x).unwrap_or(0.0);
                 let line_height = text.metrics.map(|m| m.line_height).unwrap_or(text.font_size.0);
-                Self::draw_caret(view, caret_pos, line_height);
+                Self::draw_caret(view, caret_pos, text_end_pos, line_height);
             },
             CaretAction::None => (),
         }
@@ -212,8 +217,7 @@ impl Model for EditBox {
 }
 
 impl EditBox {
-    fn draw_caret(view: &mut Node<Self>, caret_pos: Real, line_height: Real) {
-        // let y = text.glyph_positions.ge
+    fn draw_caret(view: &mut Node<Self>, caret_pos: Real, text_end_pos: Real, line_height: Real) {
         if let Some(path) = view
             .get_prim_mut("caret")
             .and_then(|caret| caret.shape.path_mut())
@@ -227,6 +231,36 @@ impl EditBox {
                     .stroke((Color::Black, 2, 0.5))
                     .build()
             );
+        }
+
+        let (min_x, max_x) = view
+            .get_prim_mut("clip_area")
+            .and_then(|clip_area|  clip_area.shape.group_mut())
+            .expect("Clip area expected")
+            .clip
+            .scissor()
+            .map(|scissor| {
+                (scissor.x.val(), scissor.x.val() + scissor.width.val())
+            })
+            .expect("Clip scissor expected");
+
+        let text_transform = view
+            .get_prim_mut("text")
+            .expect("Text expected")
+            .transform_mut();
+        let shift = text_transform
+            .local_matrix()
+            .expect("Local transform expected")
+            .translate_xy()
+            .0
+            .abs();
+
+        if caret_pos - shift > max_x {
+            text_transform.translate(-caret_pos + max_x - 1.0, 0.0);
+        } else if caret_pos - shift < min_x {
+            text_transform.translate(min_x - caret_pos + 1.0, 0.0);
+        } else if shift > 0.0 && text_end_pos - shift < max_x - 1.0 {
+            text_transform.translate_add(shift.min(max_x - 1.0 - text_end_pos + shift), 0.0);
         }
     }
 }

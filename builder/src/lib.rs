@@ -1,9 +1,6 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use exgui_core::{
-    Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor,
-    AlignVer, Transform, Comp, EventName, Listener, Padding,
-};
+use exgui_core::{Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill, AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip};
 pub use exgui_core::builder::*;
 
 pub struct PrimBuilder<M: Model> {
@@ -137,6 +134,11 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
         self.shape.fill = None;
         self
     }
+
+    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+        self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M> for CircleBuilder<M> {
@@ -268,6 +270,11 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
         self.shape.fill = None;
         self
     }
+
+    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+        self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M> for RectBuilder<M> {
@@ -365,6 +372,11 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
         self.shape.fill = None;
         self
     }
+
+    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+        self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M> for TextBuilder<M> {
@@ -442,6 +454,11 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
         self.shape.fill = None;
         self
     }
+
+    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+        self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
+        self
+    }
 }
 
 impl<M: Model> EventHandler<M> for PathBuilder<M> {
@@ -517,6 +534,11 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
 
     fn remove_fill(mut self) -> Self {
         self.shape.fill = None;
+        self
+    }
+
+    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+        self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
 }

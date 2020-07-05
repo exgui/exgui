@@ -188,6 +188,10 @@ impl TransformMatrix {
         self
     }
 
+    pub fn translate_xy(&self) -> (Real, Real) {
+        (self.matrix[4], self.matrix[5])
+    }
+
     pub fn rotate(&mut self, theta: Real) -> &mut Self {
         self.matrix[0] = theta.cos();
         self.matrix[2] = -theta.sin();

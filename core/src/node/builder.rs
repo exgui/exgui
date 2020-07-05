@@ -1,4 +1,4 @@
-use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent, On};
+use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent, On, RealValue};
 
 pub trait Builder<M: Model> {
     fn build(self) -> Node<M>;
@@ -22,6 +22,7 @@ pub trait Primitive<M: Model> {
     fn fill(self, fill: impl Into<Fill>) -> Self;
     fn remove_stroke(self) -> Self;
     fn remove_fill(self) -> Self;
+    fn clip(self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self;
 }
 
 pub trait EventHandler<M: Model>: Sized {
