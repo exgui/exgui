@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap};
 
 use exgui_core::{
     Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill,
-    AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip, Rounding,
+    AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip, Rounding, Real,
 };
 pub use exgui_core::builder::*;
 
@@ -115,6 +115,11 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
         self.prim.children.extend(children);
+        self
+    }
+
+    fn transparency(mut self, transparency: impl Into<Real>) -> Self {
+        self.shape.transparency = transparency.into();
         self
     }
 
@@ -295,6 +300,11 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
         self
     }
 
+    fn transparency(mut self, transparency: impl Into<Real>) -> Self {
+        self.shape.transparency = transparency.into();
+        self
+    }
+
     fn stroke(mut self, stroke: impl Into<Stroke>) -> Self {
         self.shape.stroke = Some(stroke.into());
         self
@@ -397,6 +407,11 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
         self
     }
 
+    fn transparency(mut self, transparency: impl Into<Real>) -> Self {
+        self.shape.transparency = transparency.into();
+        self
+    }
+
     fn stroke(mut self, stroke: impl Into<Stroke>) -> Self {
         self.shape.stroke = Some(stroke.into());
         self
@@ -476,6 +491,11 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
 
     fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
         self.prim.children.extend(children);
+        self
+    }
+
+    fn transparency(mut self, transparency: impl Into<Real>) -> Self {
+        self.shape.transparency = transparency.into();
         self
     }
 
@@ -561,6 +581,11 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
         self
     }
 
+    fn transparency(mut self, transparency: impl Into<Real>) -> Self {
+        self.shape.transparency = Some(transparency.into());
+        self
+    }
+
     fn stroke(mut self, stroke: impl Into<Stroke>) -> Self {
         self.shape.stroke = Some(stroke.into());
         self
@@ -632,4 +657,8 @@ pub fn translate(x: impl Into<f32>, y: impl Into<f32>) -> Transform {
 
 pub fn rotate(theta: impl Into<f32>) -> Transform {
     Transform::new().with_rotation(theta.into())
+}
+
+pub fn scale(x: impl Into<f32>, y: impl Into<f32>) -> Transform {
+    Transform::new().with_scale(x.into(), y.into())
 }

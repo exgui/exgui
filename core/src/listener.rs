@@ -1,6 +1,6 @@
 use std::{ops::Deref, time::Duration};
 
-use crate::{MouseDown, KeyboardEvent, Model, Prim};
+use crate::{MouseDown, KeyboardEvent, Model, Prim, MouseScroll};
 
 pub struct On<'a, M: Model, E> {
     pub prim: &'a Prim<M>,
@@ -14,6 +14,7 @@ impl EventName {
     pub const WINDOW_RESIZED: EventName = EventName("WindowResized");
     pub const DRAW: EventName = EventName("Draw");
     pub const ON_MOUSE_DOWN: EventName = EventName("OnMouseDown");
+    pub const ON_MOUSE_SCROLL: EventName = EventName("OnMouseScroll");
     pub const ON_KEY_DOWN: EventName = EventName("OnKeyDown");
     pub const ON_KEY_UP: EventName = EventName("OnKeyUp");
     pub const ON_CLICK: EventName = EventName("OnClick");
@@ -34,6 +35,7 @@ pub enum Listener<M: Model> {
     WindowResized(fn (u32, u32) -> M::Message),
     Draw(fn (Duration) -> M::Message),
     OnMouseDown(fn (On<M, MouseDown>) -> M::Message),
+    OnMouseScroll(fn (On<M, MouseScroll>) -> M::Message),
     OnKeyDown(fn (On<M, KeyboardEvent>) -> M::Message),
     OnKeyUp(fn (On<M, KeyboardEvent>) -> M::Message),
     OnClick(fn (On<M, MouseDown>) -> M::Message),
@@ -47,6 +49,7 @@ impl<M: Model> Listener<M> {
             Listener::WindowResized(_) => EventName::WINDOW_RESIZED,
             Listener::Draw(_) => EventName::DRAW,
             Listener::OnMouseDown(_) => EventName::ON_MOUSE_DOWN,
+            Listener::OnMouseScroll(_) => EventName::ON_MOUSE_SCROLL,
             Listener::OnKeyDown(_) => EventName::ON_KEY_DOWN,
             Listener::OnKeyUp(_) => EventName::ON_KEY_UP,
             Listener::OnClick(_) => EventName::ON_CLICK,

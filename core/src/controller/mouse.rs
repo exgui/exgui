@@ -15,6 +15,12 @@ pub struct MouseDown {
     pub button: MouseButton,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MouseScroll {
+    pub pos: MousePos,
+    pub delta: (f32, f32),
+}
+
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct MouseController {
     last_pos: Option<MousePos>,
@@ -55,6 +61,11 @@ impl MouseController {
     pub fn pressed_comp(&self, comp: &mut Comp, button: MouseButton) {
         let pos = self.last_pos();
         comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_down(pos, button)))
+    }
+
+    pub fn mouse_scroll(&self, comp: &mut Comp, delta: (f32, f32)) {
+        let pos = self.last_pos();
+        comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_scroll(MouseScroll { pos, delta })))
     }
 
 //    pub fn left_pressed_node<M: Model>(&self, node: &mut Node<M>) -> Vec<M::Message> {

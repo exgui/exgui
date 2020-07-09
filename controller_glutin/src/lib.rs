@@ -2,7 +2,7 @@ use std::{thread, time::{Instant, Duration}};
 
 pub use {gl, glutin};
 use glutin::{
-    event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState, MouseButton},
+    event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState, MouseButton, MouseScrollDelta},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
     ContextBuilder, PossiblyCurrent, NotCurrent, WindowedContext,
@@ -173,6 +173,9 @@ impl<R: Render + 'static> App<R> {
                     },
                     WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => {
                         mouse_controller.pressed_comp(&mut comp, convert_mouse_button(button));
+                    },
+                    WindowEvent::MouseWheel { delta: MouseScrollDelta::LineDelta(x, y), .. } => {
+                        mouse_controller.mouse_scroll(&mut comp, (x, y));
                     },
                     _ => (),
                 },

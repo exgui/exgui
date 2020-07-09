@@ -66,6 +66,13 @@ impl<M: Model> Node<M> {
         }
     }
 
+    pub fn into_prim(self) -> Option<Prim<M>> {
+        match self {
+            Node::Prim(prim) => Some(prim),
+            _ => None,
+        }
+    }
+
     pub fn as_comp(&self) -> Option<&Comp> {
         match self {
             Node::Comp(comp) => Some(comp),
@@ -76,6 +83,47 @@ impl<M: Model> Node<M> {
     pub fn as_comp_mut(&mut self) -> Option<&mut Comp> {
         match self {
             Node::Comp(comp) => Some(comp),
+            _ => None,
+        }
+    }
+
+    pub fn into_comp(self) -> Option<Comp> {
+        match self {
+            Node::Comp(comp) => Some(comp),
+            _ => None,
+        }
+    }
+
+    pub fn get(&self, id: impl AsRef<str>) -> Option<&Node<M>> {
+        let id = id.as_ref();
+        match self {
+            Node::Prim(prim) if prim.id() == Some(id) => Some(self),
+            Node::Prim(prim) => {
+                for child in &prim.children {
+                    if let Some(node) = child.get(id) {
+                        return Some(node);
+                    }
+                }
+                None
+            },
+            Node::Comp(comp) if comp.id() == Some(id) => Some(self),
+            _ => None,
+        }
+    }
+
+    pub fn get_mut(&mut self, id: impl AsRef<str>) -> Option<&mut Node<M>> {
+        let id = id.as_ref();
+        match self {
+            Node::Prim(prim) if prim.id() == Some(id) => Some(self),
+            Node::Prim(prim) => {
+                for child in &mut prim.children {
+                    if let Some(node) = child.get_mut(id) {
+                        return Some(node);
+                    }
+                }
+                None
+            },
+            Node::Comp(comp) if comp.id() == Some(id) => Some(self),
             _ => None,
         }
     }

@@ -76,6 +76,17 @@ impl<M: Model> Prim<M> {
                             }
                         }
                     }
+                    InputEvent::MouseScroll(scroll) => if self.intersect(scroll.pos.x, scroll.pos.y) {
+                        if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_SCROLL) {
+                            for listener in listeners {
+                                let msg = match listener {
+                                    Listener::OnMouseScroll(func) => func(On { prim: self, event: scroll }),
+                                    _ => continue,
+                                };
+                                outputs.push(msg);
+                            }
+                        }
+                    }
                     InputEvent::KeyDown(event) => {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
                             for listener in listeners {

@@ -1,4 +1,7 @@
-use crate::{MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent, On, RealValue};
+use crate::{
+    Real, MouseDown, Node, Model, Stroke, Fill, Transform, Listener, KeyboardEvent, On, RealValue,
+    MouseScroll,
+};
 
 pub trait Builder<M: Model> {
     fn build(self) -> Node<M>;
@@ -18,6 +21,7 @@ pub trait Entity {
 pub trait Primitive<M: Model> {
     fn child(self, child: impl Builder<M>) -> Self;
     fn children(self, children: impl IntoIterator<Item = Node<M>>) -> Self;
+    fn transparency(self, transparency: impl Into<Real>) -> Self;
     fn stroke(self, stroke: impl Into<Stroke>) -> Self;
     fn fill(self, fill: impl Into<Fill>) -> Self;
     fn remove_stroke(self) -> Self;
@@ -34,6 +38,11 @@ pub trait EventHandler<M: Model>: Sized {
 
     fn on_mouse_down(mut self, trigger: fn(On<M, MouseDown>) -> M::Message) -> Self {
         self.add_listener(Listener::OnMouseDown(trigger));
+        self
+    }
+
+    fn on_mouse_scroll(mut self, trigger: fn(On<M, MouseScroll>) -> M::Message) -> Self {
+        self.add_listener(Listener::OnMouseScroll(trigger));
         self
     }
 
