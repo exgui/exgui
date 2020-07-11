@@ -1,4 +1,4 @@
-use std::{env, mem, time::Duration};
+use std::{env, time::Duration};
 
 use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
@@ -7,15 +7,19 @@ use exgui::{
     MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, Pct, Stroke, LineJoin,
 };
 
-use self::levels::Level;
+use self::{
+    animate::Animate,
+    levels::{Cell, Level},
+};
 
+mod animate;
 mod levels;
 
 struct Canvas {
     width: f32,
     height: f32,
     cell_size: f32,
-    scale_factor: f32,
+    scale_factor: Animate<f32>,
 }
 
 impl Canvas {
@@ -31,7 +35,7 @@ impl Canvas {
             width: Self::WIDTH,
             height: Self::HEIGHT,
             cell_size: Self::calc_cell_size(Self::WIDTH, Self::HEIGHT),
-            scale_factor: 1.0,
+            scale_factor: Animate::new(0.0, 1.0, 0.002),
         }
     }
 
@@ -42,9 +46,36 @@ impl Canvas {
     }
 }
 
-struct Game {
-    canvas: Canvas,
-    level: Level,
+#[derive(Default)]
+struct Docker {
+    row: usize,
+    col: usize,
+    x: Animate<f32>,
+    y: Animate<f32>,
+}
+
+impl Docker {
+    fn is_transient(&self) -> bool {
+        self.x.is_transient() || self.y.is_transient()
+    }
+
+    fn animate(&mut self, elapsed: Duration) {
+        self.x.animate(elapsed);
+        self.y.animate(elapsed);
+    }
+
+    fn update(&mut self, x: f32, y: f32) -> (f32, f32) {
+        self.x.to(x);
+        self.y.to(y);
+        (*self.x, *self.y)
+    }
+}
+
+enum Direction {
+    Left,
+    Right,
+    Up,
+    Down,
 }
 
 enum Msg {
@@ -52,7 +83,75 @@ enum Msg {
         width: f32,
         height: f32,
     },
+    Draw(Duration),
     Scroll(f32),
+    KeyDown(VirtualKeyCode),
+    None,
+}
+
+struct Game {
+    canvas: Canvas,
+    level: Level,
+    docker: Docker,
+}
+
+impl Game {
+    fn is_transient(&self) -> bool {
+        self.canvas.scale_factor.is_transient()
+        || self.docker.is_transient()
+    }
+
+    fn animate(&mut self, elapsed: Duration) {
+        self.canvas.scale_factor.animate(elapsed);
+        self.docker.animate(elapsed);
+    }
+
+    fn field_transform(&self) -> Transform {
+        let scale_factor = self.canvas.scale_factor.val();
+        Transform::new()
+            .with_scale(scale_factor, scale_factor)
+            .with_translation(
+                -(scale_factor * self.canvas.width - self.canvas.width) / 2.0,
+                -(scale_factor * self.canvas.height - self.canvas.height) / 2.0,
+            )
+    }
+
+    fn field_pos(&self) -> (f32, f32) {
+        let field_x = (self.canvas.width - self.level.cols() as f32 * self.canvas.cell_size) / 2.0;
+        let field_y = (self.canvas.height - self.level.rows() as f32 * self.canvas.cell_size) / 2.0;
+        (field_x, field_y)
+    }
+
+    fn reset_docker(&mut self) {
+        let (row, col) = self.level.docker_pos();
+        let (field_x, field_y) = self.field_pos();
+        let x = field_x + col as f32 * self.canvas.cell_size;
+        let y = field_y + row as f32 * self.canvas.cell_size;
+        self.docker = Docker {
+            row,
+            col,
+            x: Animate::new(x, x, 0.3),
+            y: Animate::new(y, y, 0.3),
+        };
+    }
+
+    fn move_docker(&mut self, dir: Direction) {
+        let (to_row, to_col) = match dir {
+            Direction::Left => (self.docker.row, self.docker.col - 1),
+            Direction::Right => (self.docker.row, self.docker.col + 1),
+            Direction::Up => (self.docker.row - 1, self.docker.col),
+            Direction::Down => (self.docker.row + 1, self.docker.col),
+        };
+
+        if self.level.go_docker(to_row, to_col) {
+            self.docker.row = to_row;
+            self.docker.col = to_col;
+            let (field_x, field_y) = self.field_pos();
+            let x = field_x + self.docker.col as f32 * self.canvas.cell_size;
+            let y = field_y + self.docker.row as f32 * self.canvas.cell_size;
+            self.docker.update(x, y);
+        }
+    }
 }
 
 impl Model for Game {
@@ -60,10 +159,13 @@ impl Model for Game {
     type Properties = ();
 
     fn create(_props: Self::Properties) -> Self {
-        Self {
+        let mut game = Self {
             canvas: Canvas::new(),
             level: Level::new(),
-        }
+            docker: Default::default(),
+        };
+        game.reset_docker();
+        game
     }
 
     fn system_update(&mut self, msg: SystemMessage) -> Option<Self::Message> {
@@ -72,6 +174,7 @@ impl Model for Game {
                 width: width as f32,
                 height: height as f32,
             }),
+            SystemMessage::Draw(elapsed) => Some(Msg::Draw(elapsed)),
             _ => None,
         }
     }
@@ -80,11 +183,30 @@ impl Model for Game {
         match msg {
             Msg::Resize { width, height } => {
                 self.canvas.resize(width, height);
+                self.reset_docker();
                 ChangeView::Rebuild
             },
+            Msg::Draw(elapsed) => {
+                if self.is_transient() {
+                    self.animate(elapsed);
+                    ChangeView::Modify
+                } else {
+                    ChangeView::None
+                }
+            }
             Msg::Scroll(delta) => {
-                self.canvas.scale_factor = (self.canvas.scale_factor + delta * 0.1).max(0.0);
+                self.canvas.scale_factor.set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
                 ChangeView::Rebuild
+            }
+            Msg::KeyDown(code) => {
+                match code {
+                    VirtualKeyCode::Left => self.move_docker(Direction::Left),
+                    VirtualKeyCode::Right => self.move_docker(Direction::Right),
+                    VirtualKeyCode::Up => self.move_docker(Direction::Up),
+                    VirtualKeyCode::Down => self.move_docker(Direction::Down),
+                    _ => (),
+                };
+                ChangeView::None
             }
             _ => ChangeView::None,
         }
@@ -92,21 +214,32 @@ impl Model for Game {
 
     fn build_view(&self) -> Node<Self> {
         let mut cells = vec![];
-        let field_x = (self.canvas.width - self.level.cols() as f32 * self.canvas.cell_size) / 2.0;
-        let field_y = (self.canvas.height - self.level.rows() as f32 * self.canvas.cell_size) / 2.0;
+        let mut docker = None;
+        let (field_x, field_y) = self.field_pos();
 
-        for (row, line) in self.level.field().into_iter().enumerate() {
-            for (col, &cell) in line.as_bytes().into_iter().enumerate() {
+        for row in 0..self.level.rows() {
+            for col in 0..self.level.cols() {
                 let x = field_x + col as f32 * self.canvas.cell_size;
                 let y = field_y + row as f32 * self.canvas.cell_size;
-                match cell {
-                    b'O' => cells.push(self.build_wall(x, y)),
-                    b'#' => cells.push(self.build_box(x, y)),
-                    b'*' => cells.push(self.build_docker(x, y)),
-                    b'+' => cells.push(self.build_place(x, y)),
+                match self.level.cell(row, col).expect("Cell expected") {
+                    Cell::Wall => cells.push(self.build_wall(x, y)),
+                    Cell::Box => cells.push(self.build_box(x, y)),
+                    Cell::BoxOnPlace => {
+                        cells.push(self.build_place(x, y));
+                        cells.push(self.build_box(x, y));
+                    },
+                    Cell::Docker => docker = Some(self.build_docker(x, y)),
+                    Cell::DockerOnPlace => {
+                        cells.push(self.build_place(x, y));
+                        docker = Some(self.build_docker(x, y));
+                    },
+                    Cell::Place => cells.push(self.build_place(x, y)),
                     _ => (),
                 }
             }
+        }
+        if let Some(docker) = docker {
+            cells.push(docker);
         }
 
         rect()
@@ -115,16 +248,25 @@ impl Model for Game {
             .fill(Color::RGB(0.8, 0.9, 1.0))
             .on_mouse_scroll(|case| Msg::Scroll(case.event.delta.1))
             .child(group()
-                .transform(Transform::new()
-                    .with_scale(self.canvas.scale_factor, self.canvas.scale_factor)
-                    .with_translation(
-                        -(self.canvas.scale_factor * self.canvas.width - self.canvas.width) / 2.0,
-                        -(self.canvas.scale_factor * self.canvas.height - self.canvas.height) / 2.0,
-                    )
-                )
+                .id("field")
+                .transform(self.field_transform())
                 .children(cells)
+                .on_key_down(|case| if let Some(code) = case.event.keycode {
+                    Msg::KeyDown(code)
+                } else {
+                    Msg::None
+                })
             )
             .build()
+    }
+
+    fn modify_view(&mut self, view: &mut Node<Self>) {
+        if let Some(field) = view.get_prim_mut("field") {
+            *field.transform_mut() = self.field_transform();
+        }
+        if let Some(docker) = view.get_prim_mut("docker") {
+            *docker.transform_mut() = translate(*self.docker.x, *self.docker.y);
+        }
     }
 }
 
@@ -244,10 +386,10 @@ impl Game {
                 .transform(translate(self.canvas.cell_size / 2.0, head_radius + docker_brush_size))
             )
             .child(path(vec![
-                    Move([docker_brush_size * 2.2, self.canvas.cell_size - docker_brush_size * 2.0]),
+                    Move([docker_brush_size * 1.8, self.canvas.cell_size - docker_brush_size * 1.2]),
                     BezCtrl([self.canvas.cell_size / 2.0, head_radius * 2.0]),
-                    QuadBezTo([self.canvas.cell_size - docker_brush_size * 2.2, self.canvas.cell_size - docker_brush_size * 2.0]),
-                    LineAlonX(docker_brush_size * 2.2)
+                    QuadBezTo([self.canvas.cell_size - docker_brush_size * 1.8, self.canvas.cell_size - docker_brush_size * 1.2]),
+                    LineAlonX(docker_brush_size * 1.8)
                 ])
                 .fill(docker_color)
                 .stroke(Stroke {
@@ -261,7 +403,7 @@ impl Game {
     }
 
     fn build_place(&self, x: f32, y: f32) -> Node<Self> {
-        let place_color = Color::RGB(0.15, 0.5, 0.9);
+        let place_color = Color::RGB(0.2, 0.6, 1.0);
         let place_size = self.canvas.cell_size * 0.5;
         let place_diagonal = (2.0 * place_size.powi(2)).sqrt();
         let round_radius = 1.0;
