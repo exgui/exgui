@@ -141,6 +141,18 @@ impl Game {
         (field_x, field_y)
     }
 
+    fn next_level(&mut self) {
+        self.level.next();
+        self.level_complete = false;
+        self.reset_docker();
+    }
+
+    fn reset_level(&mut self) {
+        self.level.reset();
+        self.reset_docker();
+        self.level_complete = false;
+    }
+
     fn reset_docker(&mut self) {
         let (row, col) = self.level.docker_pos();
         let (field_x, field_y) = self.field_pos();
@@ -238,9 +250,7 @@ impl Model for Game {
                     ChangeView::Modify
                 } else {
                     if self.level_complete {
-                        self.level.next();
-                        self.level_complete = false;
-                        self.reset_docker();
+                        self.next_level();
                         ChangeView::Rebuild
                     } else {
                         ChangeView::None
@@ -251,6 +261,10 @@ impl Model for Game {
                 self.canvas.scale_factor.set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
                 ChangeView::Rebuild
             }
+            Msg::KeyDown(VirtualKeyCode::Space) => {
+                self.reset_level();
+                ChangeView::Rebuild
+            },
             Msg::KeyDown(code) => {
                 match code {
                     VirtualKeyCode::Left if !self.docker.is_transient() => self.move_docker(Direction::Left),
