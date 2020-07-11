@@ -1,4 +1,4 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq)]
 pub enum Cell {
     Wall,
     Box,
@@ -142,6 +142,17 @@ impl Level {
             .get(row)
             .and_then(|line| line.get(col))
             .map(Into::into)
+    }
+
+    pub fn is_complete(&self) -> bool {
+        for row in 0..self.rows() {
+            for col in 0..self.cols() {
+                if self.cell(row, col).unwrap() == Cell::Box {
+                    return false;
+                }
+            }
+        }
+        true
     }
 
     pub fn go_docker(&mut self, row: usize, col: usize) -> bool {

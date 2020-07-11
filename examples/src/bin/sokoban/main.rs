@@ -65,6 +65,8 @@ struct Docker {
 }
 
 impl Docker {
+    const SPEED: f32 = 0.3;
+
     fn is_transient(&self) -> bool {
         self.x.is_transient() || self.y.is_transient() || self.skew_box.as_ref().map(|skew_box| {
             skew_box.x.is_transient() || skew_box.y.is_transient()
@@ -108,6 +110,7 @@ enum Msg {
 struct Game {
     canvas: Canvas,
     level: Level,
+    level_complete: bool,
     docker: Docker,
 }
 
@@ -146,8 +149,8 @@ impl Game {
         self.docker = Docker {
             row,
             col,
-            x: Animate::new(x, x, 0.3),
-            y: Animate::new(y, y, 0.3),
+            x: Animate::new(x, x, Docker::SPEED),
+            y: Animate::new(y, y, Docker::SPEED),
             skew_box: None,
         };
     }
@@ -175,9 +178,13 @@ impl Game {
                     id: format!("box_{}_{}", to_row, to_col),
                     row: to_box_row,
                     col: to_box_col,
-                    x: Animate::new(x, field_x + to_box_col as f32 * self.canvas.cell_size, 0.3),
-                    y: Animate::new(y, field_y + to_box_row as f32 * self.canvas.cell_size, 0.3),
+                    x: Animate::new(x, field_x + to_box_col as f32 * self.canvas.cell_size, Docker::SPEED),
+                    y: Animate::new(y, field_y + to_box_row as f32 * self.canvas.cell_size, Docker::SPEED),
                 });
+
+                if self.level.is_complete() {
+                    self.level_complete = true;
+                }
             }
         }
 
@@ -200,6 +207,7 @@ impl Model for Game {
         let mut game = Self {
             canvas: Canvas::new(),
             level: Level::new(),
+            level_complete: false,
             docker: Default::default(),
         };
         game.reset_docker();
@@ -229,7 +237,14 @@ impl Model for Game {
                     self.animate(elapsed);
                     ChangeView::Modify
                 } else {
-                    ChangeView::None
+                    if self.level_complete {
+                        self.level.next();
+                        self.level_complete = false;
+                        self.reset_docker();
+                        ChangeView::Rebuild
+                    } else {
+                        ChangeView::None
+                    }
                 }
             }
             Msg::Scroll(delta) => {
@@ -238,10 +253,10 @@ impl Model for Game {
             }
             Msg::KeyDown(code) => {
                 match code {
-                    VirtualKeyCode::Left => self.move_docker(Direction::Left),
-                    VirtualKeyCode::Right => self.move_docker(Direction::Right),
-                    VirtualKeyCode::Up => self.move_docker(Direction::Up),
-                    VirtualKeyCode::Down => self.move_docker(Direction::Down),
+                    VirtualKeyCode::Left if !self.docker.is_transient() => self.move_docker(Direction::Left),
+                    VirtualKeyCode::Right if !self.docker.is_transient() => self.move_docker(Direction::Right),
+                    VirtualKeyCode::Up if !self.docker.is_transient() => self.move_docker(Direction::Up),
+                    VirtualKeyCode::Down if !self.docker.is_transient() => self.move_docker(Direction::Down),
                     _ => (),
                 };
                 ChangeView::None
@@ -373,7 +388,8 @@ impl Game {
     fn build_box(&self, row: usize, col: usize, x: f32, y: f32) -> Node<Self> {
         let board_color = Color::RGB(1.0, 0.7, 0.1);
         let board_space = self.canvas.cell_size / 15.0;
-        let board_chunk_size = (self.canvas.cell_size - board_space * 2.0) / 3.0;
+        let board_space_half = board_space / 2.0;
+        let board_chunk_size = (self.canvas.cell_size - board_space * 3.0) / 3.0;
         let round_radius = 1.0;
 
         rect()
@@ -383,39 +399,39 @@ impl Game {
             .transparency(1.0)
             .transform(translate(x, y))
             .child(rect()
-                .width(self.canvas.cell_size)
+                .width(self.canvas.cell_size - board_space)
                 .height(board_chunk_size)
                 .fill(board_color)
                 .rounding(round_radius)
-                .transform(translate(0.0, 0.0))
+                .transform(translate(board_space_half, board_space_half))
             )
             .child(rect()
                 .width(board_chunk_size)
                 .height(board_chunk_size)
                 .fill(board_color)
                 .rounding(round_radius)
-                .transform(translate(0.0, board_chunk_size + board_space))
+                .transform(translate(board_space_half, board_space_half + board_chunk_size + board_space))
             )
             .child(rect()
                 .width(board_chunk_size)
                 .height(board_chunk_size)
                 .fill(board_color)
                 .rounding(round_radius)
-                .transform(translate(board_chunk_size + board_space, board_chunk_size + board_space))
+                .transform(translate(board_space_half + board_chunk_size + board_space, board_space_half + board_chunk_size + board_space))
             )
             .child(rect()
                 .width(board_chunk_size)
                 .height(board_chunk_size)
                 .fill(board_color)
                 .rounding(round_radius)
-                .transform(translate(board_chunk_size * 2.0 + board_space * 2.0, board_chunk_size + board_space))
+                .transform(translate(board_space_half + (board_chunk_size + board_space) * 2.0, board_space_half + board_chunk_size + board_space))
             )
             .child(rect()
-                .width(self.canvas.cell_size)
+                .width(self.canvas.cell_size - board_space)
                 .height(board_chunk_size)
                 .fill(board_color)
                 .rounding(round_radius)
-                .transform(translate(0.0, board_chunk_size * 2.0 + board_space * 2.0))
+                .transform(translate(board_space_half, board_space_half + board_chunk_size * 2.0 + board_space * 2.0))
             )
             .build()
     }
@@ -486,6 +502,8 @@ fn main() {
             .with_inner_size(glutin::dpi::PhysicalSize::new(Canvas::WIDTH, Canvas::HEIGHT)),
         glutin::ContextBuilder::new()
             .with_vsync(true)
+            .with_double_buffer(Some(true))
+            .with_hardware_acceleration(Some(true))
             .with_multisampling(8)
             .with_srgb(true),
         NanovgRender::default()
