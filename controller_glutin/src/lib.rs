@@ -199,14 +199,15 @@ impl<R: Render + 'static> App<R> {
                     let elapsed = last_time.elapsed();
                     last_time = Instant::now();
                     comp.send_system_msg(SystemMessage::Draw(elapsed));
-                    comp.update_view();
+                    if comp.update_view() {
+                        renderer.set_dimensions(size.width, size.height, context.window().scale_factor());
+                        renderer.render(&mut comp).expect("Renderer error");
 
-                    renderer.set_dimensions(size.width, size.height, context.window().scale_factor());
-                    renderer.render(&mut comp).expect("Renderer error");
-
-                    context.swap_buffers().expect("Swap buffers fail");
+                        context.swap_buffers().expect("Swap buffers fail");
+                    } else {
+                        thread::sleep(Duration::from_millis(10));
+                    }
                 }
-                Event::RedrawEventsCleared => thread::sleep(Duration::from_millis(5)),
                 _ => (),
             }
         })

@@ -503,7 +503,6 @@ fn main() {
         glutin::ContextBuilder::new()
             .with_vsync(true)
             .with_double_buffer(Some(true))
-            .with_hardware_acceleration(Some(true))
             .with_multisampling(8)
             .with_srgb(true),
         NanovgRender::default()
