@@ -25,6 +25,13 @@ impl Cell {
         }
     }
 
+    pub fn contains_box(&self) -> bool {
+        match self {
+            Self::Box | Self::BoxOnPlace => true,
+            _ => false,
+        }
+    }
+
     pub fn is_empty(&self) -> bool {
         match self {
             Self::Space | Self::Place => true,
@@ -148,6 +155,28 @@ impl Level {
             match self.cell(old_row, old_col).unwrap() {
                 Cell::Docker => self.current[old_row][old_col] = Cell::Space.into(),
                 Cell::DockerOnPlace => self.current[old_row][old_col] = Cell::Place.into(),
+                _ => (),
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn go_box(&mut self, old_row: usize, old_col: usize, row: usize, col: usize) -> bool {
+        if !self.cell(old_row, old_col).map(|cell| cell.contains_box()).unwrap_or(false) {
+            return false;
+        }
+
+        if let Some(cell) = self.cell(row, col) {
+            match cell {
+                Cell::Space => self.current[row][col] = Cell::Box.into(),
+                Cell::Place => self.current[row][col] = Cell::BoxOnPlace.into(),
+                _ => return false,
+            }
+            match self.cell(old_row, old_col).unwrap() {
+                Cell::Box => self.current[old_row][old_col] = Cell::Space.into(),
+                Cell::BoxOnPlace => self.current[old_row][old_col] = Cell::Place.into(),
                 _ => (),
             }
             true

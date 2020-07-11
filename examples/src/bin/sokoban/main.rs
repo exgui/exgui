@@ -46,22 +46,38 @@ impl Canvas {
     }
 }
 
-#[derive(Default)]
-struct Docker {
+#[derive(Debug)]
+struct SkewBox {
+    id: String,
     row: usize,
     col: usize,
     x: Animate<f32>,
     y: Animate<f32>,
 }
 
+#[derive(Default)]
+struct Docker {
+    row: usize,
+    col: usize,
+    x: Animate<f32>,
+    y: Animate<f32>,
+    skew_box: Option<SkewBox>,
+}
+
 impl Docker {
     fn is_transient(&self) -> bool {
-        self.x.is_transient() || self.y.is_transient()
+        self.x.is_transient() || self.y.is_transient() || self.skew_box.as_ref().map(|skew_box| {
+            skew_box.x.is_transient() || skew_box.y.is_transient()
+        }).unwrap_or(false)
     }
 
     fn animate(&mut self, elapsed: Duration) {
         self.x.animate(elapsed);
         self.y.animate(elapsed);
+        if let Some(skew_box) = self.skew_box.as_mut() {
+            skew_box.x.animate(elapsed);
+            skew_box.y.animate(elapsed);
+        }
     }
 
     fn update(&mut self, x: f32, y: f32) -> (f32, f32) {
@@ -132,6 +148,7 @@ impl Game {
             col,
             x: Animate::new(x, x, 0.3),
             y: Animate::new(y, y, 0.3),
+            skew_box: None,
         };
     }
 
@@ -142,6 +159,27 @@ impl Game {
             Direction::Up => (self.docker.row - 1, self.docker.col),
             Direction::Down => (self.docker.row + 1, self.docker.col),
         };
+
+        if self.level.cell(to_row, to_col).map(|cell| cell.contains_box()).unwrap_or(false) {
+            let (to_box_row, to_box_col) = match dir {
+                Direction::Left => (to_row, to_col - 1),
+                Direction::Right => (to_row, to_col + 1),
+                Direction::Up => (to_row - 1, to_col),
+                Direction::Down => (to_row + 1, to_col),
+            };
+            if self.level.go_box(to_row, to_col, to_box_row, to_box_col) {
+                let (field_x, field_y) = self.field_pos();
+                let x = field_x + to_col as f32 * self.canvas.cell_size;
+                let y = field_y + to_row as f32 * self.canvas.cell_size;
+                self.docker.skew_box = Some(SkewBox {
+                    id: format!("box_{}_{}", to_row, to_col),
+                    row: to_box_row,
+                    col: to_box_col,
+                    x: Animate::new(x, field_x + to_box_col as f32 * self.canvas.cell_size, 0.3),
+                    y: Animate::new(y, field_y + to_box_row as f32 * self.canvas.cell_size, 0.3),
+                });
+            }
+        }
 
         if self.level.go_docker(to_row, to_col) {
             self.docker.row = to_row;
@@ -215,6 +253,7 @@ impl Model for Game {
     fn build_view(&self) -> Node<Self> {
         let mut cells = vec![];
         let mut docker = None;
+        let mut boxes = vec![];
         let (field_x, field_y) = self.field_pos();
 
         for row in 0..self.level.rows() {
@@ -223,10 +262,10 @@ impl Model for Game {
                 let y = field_y + row as f32 * self.canvas.cell_size;
                 match self.level.cell(row, col).expect("Cell expected") {
                     Cell::Wall => cells.push(self.build_wall(x, y)),
-                    Cell::Box => cells.push(self.build_box(x, y)),
+                    Cell::Box => boxes.push(self.build_box(row, col, x, y)),
                     Cell::BoxOnPlace => {
                         cells.push(self.build_place(x, y));
-                        cells.push(self.build_box(x, y));
+                        boxes.push(self.build_box(row, col, x, y));
                     },
                     Cell::Docker => docker = Some(self.build_docker(x, y)),
                     Cell::DockerOnPlace => {
@@ -237,6 +276,9 @@ impl Model for Game {
                     _ => (),
                 }
             }
+        }
+        for cell_box in boxes {
+            cells.push(cell_box);
         }
         if let Some(docker) = docker {
             cells.push(docker);
@@ -266,6 +308,15 @@ impl Model for Game {
         }
         if let Some(docker) = view.get_prim_mut("docker") {
             *docker.transform_mut() = translate(*self.docker.x, *self.docker.y);
+            if let Some(skew_box) = &mut self.docker.skew_box {
+                if let Some(cell_box) = view.get_prim_mut(&skew_box.id) {
+                    *cell_box.transform_mut() = translate(*skew_box.x, *skew_box.y);
+                    skew_box.id = format!("box_{}_{}", skew_box.row, skew_box.col);
+                    if cell_box.id().map(|id| id != skew_box.id).unwrap_or(true) {
+                        cell_box.set_id(&skew_box.id);
+                    }
+                }
+            }
         }
     }
 }
@@ -319,14 +370,14 @@ impl Game {
             .build()
     }
 
-    fn build_box(&self, x: f32, y: f32) -> Node<Self> {
+    fn build_box(&self, row: usize, col: usize, x: f32, y: f32) -> Node<Self> {
         let board_color = Color::RGB(1.0, 0.7, 0.1);
         let board_space = self.canvas.cell_size / 15.0;
         let board_chunk_size = (self.canvas.cell_size - board_space * 2.0) / 3.0;
         let round_radius = 1.0;
 
         rect()
-            .id("box")
+            .id(format!("box_{}_{}", row, col))
             .width(self.canvas.cell_size)
             .height(self.canvas.cell_size)
             .transparency(1.0)

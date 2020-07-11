@@ -1,6 +1,6 @@
 use std::{time::Duration, ops::{Add, Sub, Deref}};
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Animate<T> {
     current: T,
     target: T,

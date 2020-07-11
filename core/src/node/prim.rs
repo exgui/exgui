@@ -33,6 +33,10 @@ impl<M: Model> Prim<M> {
         self.shape.id()
     }
 
+    pub fn set_id(&mut self, id: impl Into<String>) {
+        self.shape.set_id(id);
+    }
+
     pub fn set_text(&mut self, content: impl Into<String>) -> bool {
         match self.shape {
             Shape::Text(ref mut text) => {
