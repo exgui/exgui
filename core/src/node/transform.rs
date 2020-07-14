@@ -23,22 +23,22 @@ impl Transform {
     }
 
     /// Set the translation of the transform.
-    pub fn with_translation(mut self, x: f32, y: f32) -> Self {
+    pub fn with_translation(mut self, x: Real, y: Real) -> Self {
         *self.translate(x, y)
     }
 
     /// Set the scale of the transform.
-    pub fn with_scale(mut self, x: f32, y: f32) -> Self {
+    pub fn with_scale(mut self, x: Real, y: Real) -> Self {
         *self.scale(x, y)
     }
 
     /// Set the skew of the transform.
-    pub fn with_skew(mut self, x: f32, y: f32) -> Self {
+    pub fn with_skew(mut self, x: Real, y: Real) -> Self {
         *self.skew(x, y)
     }
 
     /// Set the rotation of the transform.
-    pub fn with_rotation(mut self, theta: f32) -> Self {
+    pub fn with_rotation(mut self, theta: Real) -> Self {
         *self.rotate(theta)
     }
 
@@ -57,27 +57,27 @@ impl Transform {
         }
     }
 
-    pub fn translate(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn translate(&mut self, x: Real, y: Real) -> &mut Self {
         self.transform(|matrix| { matrix.translate(x, y); });
         self
     }
 
-    pub fn translate_add(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn translate_add(&mut self, x: Real, y: Real) -> &mut Self {
         self.transform(|matrix| { matrix.translate_add(x, y); });
         self
     }
 
-    pub fn rotate(&mut self, theta: f32) -> &mut Self {
+    pub fn rotate(&mut self, theta: Real) -> &mut Self {
         self.transform(|matrix| { matrix.rotate(theta); });
         self
     }
 
-    pub fn scale(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn scale(&mut self, x: Real, y: Real) -> &mut Self {
         self.transform(|matrix| { matrix.scale(x, y); });
         self
     }
 
-    pub fn skew(&mut self, x: f32, y: f32) -> &mut Self {
+    pub fn skew(&mut self, x: Real, y: Real) -> &mut Self {
         self.transform(|matrix| { matrix.skew(x, y); });
         self
     }
@@ -206,6 +206,10 @@ impl TransformMatrix {
         self
     }
 
+    pub fn scale_xy(&self) -> (Real, Real) {
+        (self.matrix[0], self.matrix[3])
+    }
+
     pub fn skew(&mut self, x: Real, y: Real) -> &mut Self {
         self.matrix[2] = x;
         self.matrix[1] = y;
@@ -304,7 +308,7 @@ mod tests {
             matrix: [1.0, 22.2, 11.1, 1.0, 0.0, 0.0],
         });
 
-        let angle = 90f32.to_radians();
+        let angle = 90.0.to_radians();
         trans_eq!(TransformMatrix::new().with_rotation(angle), TransformMatrix {
             matrix: [angle.cos(), angle.sin(), -angle.sin(), angle.cos(), 0.0, 0.0],
         });

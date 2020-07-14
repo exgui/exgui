@@ -651,14 +651,14 @@ impl Entity for CompBuilder {
 }
 
 // todo: use RealValue's
-pub fn translate(x: impl Into<f32>, y: impl Into<f32>) -> Transform {
+pub fn translate(x: impl Into<Real>, y: impl Into<Real>) -> Transform {
     Transform::new().with_translation(x.into(), y.into())
 }
 
-pub fn rotate(theta: impl Into<f32>) -> Transform {
+pub fn rotate(theta: impl Into<Real>) -> Transform {
     Transform::new().with_rotation(theta.into())
 }
 
-pub fn scale(x: impl Into<f32>, y: impl Into<f32>) -> Transform {
+pub fn scale(x: impl Into<Real>, y: impl Into<Real>) -> Transform {
     Transform::new().with_scale(x.into(), y.into())
 }

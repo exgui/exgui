@@ -17,3 +17,15 @@ impl Padding {
         self.left + self.right
     }
 }
+
+impl<T: Into<RealValue>> From<T> for Padding {
+    fn from(padding: T) -> Self {
+        let padding = padding.into();
+        Self {
+            top: padding,
+            left: padding,
+            right: padding,
+            bottom: padding,
+        }
+    }
+}

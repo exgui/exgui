@@ -1,3 +1,4 @@
+use crate::Real;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Paint {
@@ -71,23 +72,23 @@ impl From<(Color, f32)> for Paint {
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum Gradient {
     Linear {
-        start: (f32, f32),
-        end: (f32, f32),
+        start: (Real, Real),
+        end: (Real, Real),
         start_color: Color,
         end_color: Color,
     },
     Box {
-        position: (f32, f32),
-        size: (f32, f32),
-        radius: f32,
-        feather: f32,
+        position: (Real, Real),
+        size: (Real, Real),
+        radius: Real,
+        feather: Real,
         start_color: Color,
         end_color: Color,
     },
     Radial {
-        center: (f32, f32),
-        inner_radius: f32,
-        outer_radius: f32,
+        center: (Real, Real),
+        inner_radius: Real,
+        outer_radius: Real,
         start_color: Color,
         end_color: Color,
     }

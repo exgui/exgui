@@ -8,7 +8,7 @@ use glutin::{
     ContextBuilder, PossiblyCurrent, NotCurrent, WindowedContext,
     CreationError, ContextError,
 };
-use exgui_core::{Comp, Color, MouseController, KeyboardController, controller, SystemMessage, Render};
+use exgui_core::{Real, Comp, Color, MouseController, KeyboardController, controller, SystemMessage, Render};
 
 pub enum AppState {
     Exit,
@@ -169,7 +169,7 @@ impl<R: Render + 'static> App<R> {
                         }
                     }
                     WindowEvent::CursorMoved { position, .. } => {
-                        mouse_controller.update_pos(position.x as f32, position.y as f32);
+                        mouse_controller.update_pos(position.x as Real, position.y as Real);
                     },
                     WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => {
                         mouse_controller.pressed_comp(&mut comp, convert_mouse_button(button));

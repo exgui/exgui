@@ -4,7 +4,7 @@ use exgui_render_nanovg::NanovgRender;
 use exgui_controller_glutin::{App, glutin};
 use exgui::{
     builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*, Transform,
-    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage, Pct, Stroke, LineJoin,
+    Real, VirtualKeyCode, SystemMessage, Pct, Stroke, LineJoin, Shaped,
 };
 
 use self::{
@@ -16,17 +16,17 @@ mod animate;
 mod levels;
 
 struct Canvas {
-    width: f32,
-    height: f32,
-    cell_size: f32,
-    scale_factor: Animate<f32>,
+    width: Real,
+    height: Real,
+    cell_size: Real,
+    scale_factor: Animate<Real>,
 }
 
 impl Canvas {
-    const WIDTH: f32 = 800.0;
-    const HEIGHT: f32 = 600.0;
+    const WIDTH: Real = 800.0;
+    const HEIGHT: Real = 600.0;
 
-    fn calc_cell_size(_width: f32, height: f32) -> f32 {
+    fn calc_cell_size(_width: Real, height: Real) -> Real {
         height / 24.0
     }
 
@@ -39,7 +39,7 @@ impl Canvas {
         }
     }
 
-    fn resize(&mut self, width: f32, height: f32) {
+    fn resize(&mut self, width: Real, height: Real) {
         self.width = width;
         self.height = height;
         self.cell_size = Self::calc_cell_size(self.width, self.height);
@@ -51,16 +51,16 @@ struct SkewBox {
     id: String,
     row: usize,
     col: usize,
-    x: Animate<f32>,
-    y: Animate<f32>,
+    x: Animate<Real>,
+    y: Animate<Real>,
 }
 
 #[derive(Default)]
 struct Docker {
     row: usize,
     col: usize,
-    x: Animate<f32>,
-    y: Animate<f32>,
+    x: Animate<Real>,
+    y: Animate<Real>,
     skew_box: Option<SkewBox>,
 }
 
@@ -82,7 +82,7 @@ impl Docker {
         }
     }
 
-    fn update(&mut self, x: f32, y: f32) -> (f32, f32) {
+    fn update(&mut self, x: Real, y: Real) -> (Real, Real) {
         self.x.to(x);
         self.y.to(y);
         (*self.x, *self.y)
@@ -98,19 +98,26 @@ enum Direction {
 
 enum Msg {
     Resize {
-        width: f32,
-        height: f32,
+        width: Real,
+        height: Real,
     },
     Draw(Duration),
-    Scroll(f32),
+    Scroll(Real),
     KeyDown(VirtualKeyCode),
     None,
+}
+
+#[derive(PartialEq)]
+enum GameState {
+    Run,
+    LevelComplete,
+    NextLevel,
 }
 
 struct Game {
     canvas: Canvas,
     level: Level,
-    level_complete: bool,
+    state: GameState,
     docker: Docker,
 }
 
@@ -135,29 +142,29 @@ impl Game {
             )
     }
 
-    fn field_pos(&self) -> (f32, f32) {
-        let field_x = (self.canvas.width - self.level.cols() as f32 * self.canvas.cell_size) / 2.0;
-        let field_y = (self.canvas.height - self.level.rows() as f32 * self.canvas.cell_size) / 2.0;
+    fn field_pos(&self) -> (Real, Real) {
+        let field_x = (self.canvas.width - self.level.cols() as Real * self.canvas.cell_size) / 2.0;
+        let field_y = (self.canvas.height - self.level.rows() as Real * self.canvas.cell_size) / 2.0;
         (field_x, field_y)
     }
 
     fn next_level(&mut self) {
         self.level.next();
-        self.level_complete = false;
+        self.state = GameState::Run;
         self.reset_docker();
     }
 
     fn reset_level(&mut self) {
         self.level.reset();
         self.reset_docker();
-        self.level_complete = false;
+        self.state = GameState::Run;
     }
 
     fn reset_docker(&mut self) {
         let (row, col) = self.level.docker_pos();
         let (field_x, field_y) = self.field_pos();
-        let x = field_x + col as f32 * self.canvas.cell_size;
-        let y = field_y + row as f32 * self.canvas.cell_size;
+        let x = field_x + col as Real * self.canvas.cell_size;
+        let y = field_y + row as Real * self.canvas.cell_size;
         self.docker = Docker {
             row,
             col,
@@ -184,18 +191,18 @@ impl Game {
             };
             if self.level.go_box(to_row, to_col, to_box_row, to_box_col) {
                 let (field_x, field_y) = self.field_pos();
-                let x = field_x + to_col as f32 * self.canvas.cell_size;
-                let y = field_y + to_row as f32 * self.canvas.cell_size;
+                let x = field_x + to_col as Real * self.canvas.cell_size;
+                let y = field_y + to_row as Real * self.canvas.cell_size;
                 self.docker.skew_box = Some(SkewBox {
                     id: format!("box_{}_{}", to_row, to_col),
                     row: to_box_row,
                     col: to_box_col,
-                    x: Animate::new(x, field_x + to_box_col as f32 * self.canvas.cell_size, Docker::SPEED),
-                    y: Animate::new(y, field_y + to_box_row as f32 * self.canvas.cell_size, Docker::SPEED),
+                    x: Animate::new(x, field_x + to_box_col as Real * self.canvas.cell_size, Docker::SPEED),
+                    y: Animate::new(y, field_y + to_box_row as Real * self.canvas.cell_size, Docker::SPEED),
                 });
 
                 if self.level.is_complete() {
-                    self.level_complete = true;
+                    self.state = GameState::LevelComplete;
                 }
             }
         }
@@ -204,8 +211,8 @@ impl Game {
             self.docker.row = to_row;
             self.docker.col = to_col;
             let (field_x, field_y) = self.field_pos();
-            let x = field_x + self.docker.col as f32 * self.canvas.cell_size;
-            let y = field_y + self.docker.row as f32 * self.canvas.cell_size;
+            let x = field_x + self.docker.col as Real * self.canvas.cell_size;
+            let y = field_y + self.docker.row as Real * self.canvas.cell_size;
             self.docker.update(x, y);
         }
     }
@@ -219,7 +226,7 @@ impl Model for Game {
         let mut game = Self {
             canvas: Canvas::new(),
             level: Level::new(),
-            level_complete: false,
+            state: GameState::Run,
             docker: Default::default(),
         };
         game.reset_docker();
@@ -229,8 +236,8 @@ impl Model for Game {
     fn system_update(&mut self, msg: SystemMessage) -> Option<Self::Message> {
         match msg {
             SystemMessage::WindowResized { width, height } => Some(Msg::Resize {
-                width: width as f32,
-                height: height as f32,
+                width: width as Real,
+                height: height as Real,
             }),
             SystemMessage::Draw(elapsed) => Some(Msg::Draw(elapsed)),
             _ => None,
@@ -249,11 +256,13 @@ impl Model for Game {
                     self.animate(elapsed);
                     ChangeView::Modify
                 } else {
-                    if self.level_complete {
-                        self.next_level();
-                        ChangeView::Rebuild
-                    } else {
-                        ChangeView::None
+                    match self.state {
+                        GameState::LevelComplete => ChangeView::Modify,
+                        GameState::NextLevel => {
+                            self.next_level();
+                            ChangeView::Rebuild
+                        },
+                        _ => ChangeView::None
                     }
                 }
             }
@@ -261,7 +270,7 @@ impl Model for Game {
                 self.canvas.scale_factor.set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
                 ChangeView::Rebuild
             }
-            Msg::KeyDown(VirtualKeyCode::Space) => {
+            Msg::KeyDown(VirtualKeyCode::Backspace) => {
                 self.reset_level();
                 ChangeView::Rebuild
             },
@@ -271,6 +280,7 @@ impl Model for Game {
                     VirtualKeyCode::Right if !self.docker.is_transient() => self.move_docker(Direction::Right),
                     VirtualKeyCode::Up if !self.docker.is_transient() => self.move_docker(Direction::Up),
                     VirtualKeyCode::Down if !self.docker.is_transient() => self.move_docker(Direction::Down),
+                    VirtualKeyCode::Enter if self.state == GameState::LevelComplete => self.state = GameState::NextLevel,
                     _ => (),
                 };
                 ChangeView::None
@@ -287,8 +297,8 @@ impl Model for Game {
 
         for row in 0..self.level.rows() {
             for col in 0..self.level.cols() {
-                let x = field_x + col as f32 * self.canvas.cell_size;
-                let y = field_y + row as f32 * self.canvas.cell_size;
+                let x = field_x + col as Real * self.canvas.cell_size;
+                let y = field_y + row as Real * self.canvas.cell_size;
                 match self.level.cell(row, col).expect("Cell expected") {
                     Cell::Wall => cells.push(self.build_wall(x, y)),
                     Cell::Box => boxes.push(self.build_box(row, col, x, y)),
@@ -317,11 +327,24 @@ impl Model for Game {
             .width(Pct(100))
             .height(Pct(100))
             .fill(Color::RGB(0.8, 0.9, 1.0))
-            .on_mouse_scroll(|case| Msg::Scroll(case.event.delta.1))
+            .on_mouse_scroll(|case| Msg::Scroll(case.event.delta.1 as Real))
             .child(group()
                 .id("field")
                 .transform(self.field_transform())
                 .children(cells)
+                .child(rect()
+                    .id("info")
+                    .fill(Color::RGBA(0.0, 0.3, 0.0, 0.7))
+                    .stroke((Color::RGB(0.0, 0.3, 0.0), 1))
+                    .transparency(1.0)
+                    .padding(10)
+                    .transform(translate(self.canvas.width / 2.0 - 83.0, self.canvas.height / 2.0 - 22.0))
+                    .child(text(format!("Level {} completed", self.level.number()))
+                        .font_name("Roboto")
+                        .font_size(24)
+                        .fill(Color::White)
+                    )
+                )
                 .on_key_down(|case| if let Some(code) = case.event.keycode {
                     Msg::KeyDown(code)
                 } else {
@@ -347,11 +370,16 @@ impl Model for Game {
                 }
             }
         }
+        if let GameState::LevelComplete = self.state {
+            if let Some(info) = view.get_prim_mut("info").and_then(|info| info.shape.rect_mut()) {
+                info.transparency = 0.0;
+            }
+        }
     }
 }
 
 impl Game {
-    fn build_wall(&self, x: f32, y: f32) -> Node<Self> {
+    fn build_wall(&self, x: Real, y: Real) -> Node<Self> {
         let brick_color = Color::RGB(1.0, 0.4, 0.2);
         let brick_space = self.canvas.cell_size / 15.0;
         let brick_height = self.canvas.cell_size / 2.0 - brick_space;
@@ -399,7 +427,7 @@ impl Game {
             .build()
     }
 
-    fn build_box(&self, row: usize, col: usize, x: f32, y: f32) -> Node<Self> {
+    fn build_box(&self, row: usize, col: usize, x: Real, y: Real) -> Node<Self> {
         let board_color = Color::RGB(1.0, 0.7, 0.1);
         let board_space = self.canvas.cell_size / 15.0;
         let board_space_half = board_space / 2.0;
@@ -450,7 +478,7 @@ impl Game {
             .build()
     }
 
-    fn build_docker(&self, x: f32, y: f32) -> Node<Self> {
+    fn build_docker(&self, x: Real, y: Real) -> Node<Self> {
         let docker_color = Color::RGB(0.4, 0.4, 0.4);
         let docker_brush_size = self.canvas.cell_size / 10.0;
         let head_radius = self.canvas.cell_size / 5.0;
@@ -483,7 +511,7 @@ impl Game {
             .build()
     }
 
-    fn build_place(&self, x: f32, y: f32) -> Node<Self> {
+    fn build_place(&self, x: Real, y: Real) -> Node<Self> {
         let place_color = Color::RGB(0.2, 0.6, 1.0);
         let place_size = self.canvas.cell_size * 0.5;
         let place_diagonal = (2.0 * place_size.powi(2)).sqrt();

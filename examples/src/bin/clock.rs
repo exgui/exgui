@@ -8,31 +8,31 @@ use exgui_controller_glutin::{App, glutin};
 use exgui::{
     AlignHor::*,
     AlignVer::*, builder::*, ChangeView, Color, Comp, Gradient, Model, Node,
-    PathCommand::*, SystemMessage
+    PathCommand::*, SystemMessage, Real,
 };
 
 const INIT_WINDOW_SIZE: (u32, u32) = (480, 480);
-const TWO_PI: f32 = 2.0 * PI;
+const TWO_PI: Real = 2.0 * PI;
 
 #[derive(Debug, Default)]
 struct Clock {
     clock_size: i32,
-    dial_radius: f32,
-    dial_center: (f32, f32),
+    dial_radius: Real,
+    dial_center: (Real, Real),
 
     am: bool,
-    hour: f32,
-    minute: f32,
-    second: f32,
+    hour: Real,
+    minute: Real,
+    second: Real,
 
     year: i32,
     month: u32,
     day: u32,
     day_changed: bool,
 
-    hour_angle: f32,
-    minute_angle: f32,
-    second_angle: f32,
+    hour_angle: Real,
+    minute_angle: Real,
+    second_angle: Real,
 }
 
 #[derive(Clone)]
@@ -125,7 +125,7 @@ impl Model for Clock {
         let silver = Color::RGB(196.0 / 255.0,199.0 / 255.0,206.0 / 255.0);
         let darksilver = Color::RGB(148.0 / 255.0, 152.0 / 255.0, 161.0 / 255.0);
         let darkgray = Color::RGB(169.0 / 255.0, 169.0 / 255.0, 169.0 / 255.0);
-        let boss_rad = 6.0_f32;
+        let boss_rad = 6.0;
 
         let mut set = vec![];
 
@@ -144,7 +144,7 @@ impl Model for Clock {
 
         for m in 1..=60 {
             if m % 5 != 0 {
-                let tick_marker = self.build_tick(m as f32, 3.0, 1.0);
+                let tick_marker = self.build_tick(m as Real, 3.0, 1.0);
                 set.push(tick_marker);
             }
         }
@@ -231,21 +231,21 @@ impl Model for Clock {
 impl Clock {
     fn size_recalc(&mut self, width: u32, height: u32) -> ChangeView {
         let clock_size = width.min(height) as i32 - 2;
-        let dial_center = ((width as f64 / 2.0) as f32, (height as f64 / 2.0) as f32);
+        let dial_center = (width as f32 / 2.0, height as f32 / 2.0);
         if self.clock_size != clock_size || self.dial_center != dial_center {
             self.clock_size = clock_size;
             self.dial_center = dial_center;
-            self.dial_radius = (self.clock_size as f64 / 2.0) as f32;
+            self.dial_radius = self.clock_size as f32 / 2.0;
             ChangeView::Rebuild
         } else {
             ChangeView::None
         }
     }
 
-    fn build_num(&self, n: i32, len: f32, font_size: f32) -> Node<Clock> {
+    fn build_num(&self, n: i32, len: Real, font_size: Real) -> Node<Clock> {
         let radians_per_hour = TWO_PI / 12.0;
-        let x = len * (n as f32 * radians_per_hour).sin();
-        let y = - len * (n as f32 * radians_per_hour).cos();
+        let x = len * (n as Real * radians_per_hour).sin();
+        let y = - len * (n as Real * radians_per_hour).cos();
         let silver = Color::RGB(196.0 / 255.0,199.0 / 255.0,206.0 / 255.0);
 
         text(format!("{}", n))
@@ -257,7 +257,7 @@ impl Clock {
             .build()
     }
 
-    fn build_tick(&self, m: f32, len: f32, width: f32) -> Node<Clock> {
+    fn build_tick(&self, m: Real, len: Real, width: Real) -> Node<Clock> {
         let radians_per_sec = TWO_PI / 60.0;
         let ticks_radius = self.dial_radius * 0.925;
 
@@ -271,19 +271,19 @@ impl Clock {
 
 struct Hand {
     props: HandProperties,
-    theta: f32,
+    theta: Real,
 }
 
 #[derive(Copy, Clone, Debug, Default, PartialEq)]
 struct HandProperties {
-    length: f32,
-    width: f32,
-    theta: f32,
+    length: Real,
+    width: Real,
+    theta: Real,
 }
 
 #[derive(Clone)]
 enum HandMsg {
-    ChangeTheta(f32),
+    ChangeTheta(Real),
 }
 
 impl Model for Hand {
