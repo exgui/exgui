@@ -1,7 +1,7 @@
 pub use self::{keyboard::*, mouse::*};
 
-pub mod mouse;
 pub mod keyboard;
+pub mod mouse;
 
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum InputEvent {

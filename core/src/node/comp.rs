@@ -1,6 +1,9 @@
-use std::any::{Any, type_name};
+use std::any::{type_name, Any};
 
-use crate::{Model, Node, Transform, ChangeViewState, CompositeShape, CompositeShapeIter, CompositeShapeIterMut, Shape, SystemMessage};
+use crate::{
+    ChangeViewState, CompositeShape, CompositeShapeIter, CompositeShapeIterMut, Model, Node, Shape, SystemMessage,
+    Transform,
+};
 
 pub trait AsAny: Any {
     fn into_any(self: Box<Self>) -> Box<dyn Any>;
@@ -42,7 +45,7 @@ pub struct Comp {
 impl Comp {
     pub fn new(model: impl Model) -> Self {
         Self {
-            inner: Box::new(CompInner::new(model))
+            inner: Box::new(CompInner::new(model)),
         }
     }
 
@@ -130,7 +133,7 @@ impl CompositeShape for Comp {
 
 pub struct CompInner<M: Model> {
     id: Option<String>,
-    props: Option<M::Properties>,
+    _props: Option<M::Properties>,
     model: M,
     view: Option<Node<M>>,
     view_state: ChangeViewState,
@@ -143,10 +146,13 @@ impl<M: Model> CompInner<M> {
 
         Self {
             id: None,
-            props: None,
+            _props: None,
             model,
             view: Some(view),
-            view_state: ChangeViewState { need_rebuild: true, ..Default::default() },
+            view_state: ChangeViewState {
+                need_rebuild: true,
+                ..Default::default()
+            },
             transform: Default::default(),
         }
     }

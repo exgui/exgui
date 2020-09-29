@@ -10,13 +10,13 @@ pub enum Cell {
 }
 
 impl Cell {
-    pub const WALL: u8 = b'O';
     pub const BOX: u8 = b'#';
-    pub const DOCKER: u8 = b'*';
-    pub const PLACE: u8 = b'+';
     pub const BOX_ON_PLACE: u8 = b'!';
+    pub const DOCKER: u8 = b'*';
     pub const DOCKER_ON_PLACE: u8 = b'@';
+    pub const PLACE: u8 = b'+';
     pub const SPACE: u8 = b'-';
+    pub const WALL: u8 = b'O';
 
     pub fn contains_docker(&self) -> bool {
         match self {
@@ -112,11 +112,7 @@ impl Level {
     }
 
     pub fn cols(&self) -> usize {
-        self.current
-            .iter()
-            .map(|line| line.len())
-            .max()
-            .unwrap_or(0)
+        self.current.iter().map(|line| line.len()).max().unwrap_or(0)
     }
 
     pub fn rows(&self) -> usize {
@@ -138,10 +134,7 @@ impl Level {
     }
 
     pub fn cell(&self, row: usize, col: usize) -> Option<Cell> {
-        self.current
-            .get(row)
-            .and_then(|line| line.get(col))
-            .map(Into::into)
+        self.current.get(row).and_then(|line| line.get(col)).map(Into::into)
     }
 
     pub fn is_complete(&self) -> bool {
@@ -175,7 +168,11 @@ impl Level {
     }
 
     pub fn go_box(&mut self, old_row: usize, old_col: usize, row: usize, col: usize) -> bool {
-        if !self.cell(old_row, old_col).map(|cell| cell.contains_box()).unwrap_or(false) {
+        if !self
+            .cell(old_row, old_col)
+            .map(|cell| cell.contains_box())
+            .unwrap_or(false)
+        {
             return false;
         }
 

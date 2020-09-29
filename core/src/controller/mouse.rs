@@ -1,5 +1,5 @@
-use crate::{Comp, Real, SystemMessage};
 use super::InputEvent;
+use crate::{Comp, Real, SystemMessage};
 
 #[derive(Debug, Hash, PartialEq, Eq, Clone, Copy)]
 pub enum MouseButton {
@@ -65,13 +65,9 @@ impl MouseController {
 
     pub fn mouse_scroll(&self, comp: &mut Comp, delta: (f32, f32)) {
         let pos = self.last_pos();
-        comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_scroll(MouseScroll { pos, delta })))
+        comp.send_system_msg(SystemMessage::Input(InputEvent::mouse_scroll(MouseScroll {
+            pos,
+            delta,
+        })))
     }
-
-//    pub fn left_pressed_node<M: Model>(&self, node: &mut Node<M>) -> Vec<M::Message> {
-//        let pos = self.last_pos();
-//        let mut msgs = Vec::new();
-//        node.input(InputEvent::MousePress(pos), &mut msgs);
-//        msgs
-//    }
 }

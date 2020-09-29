@@ -1,4 +1,4 @@
-use crate::node::{Clip, Real, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Fill, Real, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Path {

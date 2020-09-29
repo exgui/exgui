@@ -1,6 +1,6 @@
 use std::{
     fmt::Debug,
-    ops::{Add, AddAssign, Sub, SubAssign, Mul, MulAssign, Div, DivAssign},
+    ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign},
 };
 
 use crate::ConvertTo;
@@ -75,7 +75,6 @@ impl From<i32> for Pct<Real> {
         Pct(v as Real)
     }
 }
-
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ValueType {

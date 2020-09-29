@@ -1,8 +1,8 @@
-use std::{borrow::Cow, marker::PhantomData, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 use crate::{
-    InputEvent, EventName, Listener, Model, Node, Shape, CompositeShape, CompositeShapeIter,
-    CompositeShapeIterMut, SystemMessage, Transform, On,
+    CompositeShape, CompositeShapeIter, CompositeShapeIterMut, EventName, InputEvent, Listener, Model, Node, On, Shape,
+    SystemMessage, Transform,
 };
 
 pub struct Prim<M: Model> {
@@ -15,17 +15,14 @@ pub struct Prim<M: Model> {
 
 impl<M: Model> Prim<M> {
     pub fn new(
-        name: Cow<'static, str>,
-        shape: Shape,
-        children: Vec<Node<M>>,
-        listeners: HashMap<EventName, Vec<Listener<M>>>,
+        name: Cow<'static, str>, shape: Shape, children: Vec<Node<M>>, listeners: HashMap<EventName, Vec<Listener<M>>>,
     ) -> Self {
         Self {
             name,
             shape,
             children,
             listeners,
-            _model: PhantomData
+            _model: PhantomData,
         }
     }
 
@@ -57,74 +54,83 @@ impl<M: Model> Prim<M> {
 
     pub fn send_system_msg(&mut self, msg: SystemMessage, outputs: &mut Vec<M::Message>) {
         match msg {
-            SystemMessage::Input(input) => {
-                match input {
-                    InputEvent::MouseDown(press) => if self.intersect(press.pos.x, press.pos.y) {
+            SystemMessage::Input(input) => match input {
+                InputEvent::MouseDown(press) => {
+                    if self.intersect(press.pos.x, press.pos.y) {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_DOWN) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnMouseDown(func) => func(On { prim: self, event: press }),
+                                    Listener::OnMouseDown(func) => func(On {
+                                        prim: self,
+                                        event: press,
+                                    }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);
                             }
                         }
-                    } else {
-                        if let Some(listeners) = self.listeners.get(&EventName::ON_BLUR) {
-                            for listener in listeners {
-                                let msg = match listener {
-                                    Listener::OnBlur(func) => func(On { prim: self, event: press }),
-                                    _ => continue,
-                                };
-                                outputs.push(msg);
-                            }
+                    } else if let Some(listeners) = self.listeners.get(&EventName::ON_BLUR) {
+                        for listener in listeners {
+                            let msg = match listener {
+                                Listener::OnBlur(func) => func(On {
+                                    prim: self,
+                                    event: press,
+                                }),
+                                _ => continue,
+                            };
+                            outputs.push(msg);
                         }
                     }
-                    InputEvent::MouseScroll(scroll) => if self.intersect(scroll.pos.x, scroll.pos.y) {
+                },
+                InputEvent::MouseScroll(scroll) => {
+                    if self.intersect(scroll.pos.x, scroll.pos.y) {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_SCROLL) {
                             for listener in listeners {
                                 let msg = match listener {
-                                    Listener::OnMouseScroll(func) => func(On { prim: self, event: scroll }),
+                                    Listener::OnMouseScroll(func) => func(On {
+                                        prim: self,
+                                        event: scroll,
+                                    }),
                                     _ => continue,
                                 };
                                 outputs.push(msg);
                             }
                         }
                     }
-                    InputEvent::KeyDown(event) => {
-                        if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
-                            for listener in listeners {
-                                let msg = match listener {
-                                    Listener::OnKeyDown(func) => func(On { prim: self, event }),
-                                    _ => continue,
-                                };
-                                outputs.push(msg);
-                            }
+                },
+                InputEvent::KeyDown(event) => {
+                    if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
+                        for listener in listeners {
+                            let msg = match listener {
+                                Listener::OnKeyDown(func) => func(On { prim: self, event }),
+                                _ => continue,
+                            };
+                            outputs.push(msg);
                         }
                     }
-                    InputEvent::KeyUp(event) => {
-                        if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_UP) {
-                            for listener in listeners {
-                                let msg = match listener {
-                                    Listener::OnKeyUp(func) => func(On { prim: self, event }),
-                                    _ => continue,
-                                };
-                                outputs.push(msg);
-                            }
+                },
+                InputEvent::KeyUp(event) => {
+                    if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_UP) {
+                        for listener in listeners {
+                            let msg = match listener {
+                                Listener::OnKeyUp(func) => func(On { prim: self, event }),
+                                _ => continue,
+                            };
+                            outputs.push(msg);
                         }
                     }
-                    InputEvent::Char(ch) => {
-                        if let Some(listeners) = self.listeners.get(&EventName::ON_INPUT_CHAR) {
-                            for listener in listeners {
-                                let msg = match listener {
-                                    Listener::OnInputChar(func) => func(On { prim: self, event: ch }),
-                                    _ => continue,
-                                };
-                                outputs.push(msg);
-                            }
+                },
+                InputEvent::Char(ch) => {
+                    if let Some(listeners) = self.listeners.get(&EventName::ON_INPUT_CHAR) {
+                        for listener in listeners {
+                            let msg = match listener {
+                                Listener::OnInputChar(func) => func(On { prim: self, event: ch }),
+                                _ => continue,
+                            };
+                            outputs.push(msg);
                         }
                     }
-                }
+                },
             },
             SystemMessage::Draw(duration) => {
                 if let Some(listeners) = self.listeners.get(&EventName::DRAW) {
@@ -178,7 +184,9 @@ impl<M: Model> CompositeShape for Prim<M> {
     }
 
     fn children_mut(&mut self) -> Option<CompositeShapeIterMut> {
-        Some(Box::new(self.children.iter_mut().map(|node| node as &mut dyn CompositeShape)))
+        Some(Box::new(
+            self.children.iter_mut().map(|node| node as &mut dyn CompositeShape),
+        ))
     }
 
     fn need_recalc(&self) -> Option<bool> {

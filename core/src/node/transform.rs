@@ -44,8 +44,7 @@ impl Transform {
 
     pub fn transform(&mut self, modifier: impl Fn(&mut TransformMatrix)) {
         match self {
-            Transform::Local(matrix)
-            | Transform::Global(matrix) => modifier(matrix),
+            Transform::Local(matrix) | Transform::Global(matrix) => modifier(matrix),
             Transform::Calculated { local: Some(local), .. } => {
                 modifier(local);
                 *self = Transform::Local(*local);
@@ -58,27 +57,37 @@ impl Transform {
     }
 
     pub fn translate(&mut self, x: Real, y: Real) -> &mut Self {
-        self.transform(|matrix| { matrix.translate(x, y); });
+        self.transform(|matrix| {
+            matrix.translate(x, y);
+        });
         self
     }
 
     pub fn translate_add(&mut self, x: Real, y: Real) -> &mut Self {
-        self.transform(|matrix| { matrix.translate_add(x, y); });
+        self.transform(|matrix| {
+            matrix.translate_add(x, y);
+        });
         self
     }
 
     pub fn rotate(&mut self, theta: Real) -> &mut Self {
-        self.transform(|matrix| { matrix.rotate(theta); });
+        self.transform(|matrix| {
+            matrix.rotate(theta);
+        });
         self
     }
 
     pub fn scale(&mut self, x: Real, y: Real) -> &mut Self {
-        self.transform(|matrix| { matrix.scale(x, y); });
+        self.transform(|matrix| {
+            matrix.scale(x, y);
+        });
         self
     }
 
     pub fn skew(&mut self, x: Real, y: Real) -> &mut Self {
-        self.transform(|matrix| { matrix.skew(x, y); });
+        self.transform(|matrix| {
+            matrix.skew(x, y);
+        });
         self
     }
 
@@ -103,16 +112,14 @@ impl Transform {
 
     pub fn local_matrix(&self) -> Option<TransformMatrix> {
         match self {
-            Transform::Local(local)
-            | Transform::Calculated { local: Some(local), .. } => Some(*local),
+            Transform::Local(local) | Transform::Calculated { local: Some(local), .. } => Some(*local),
             _ => None,
         }
     }
 
     pub fn global_matrix(&self) -> Option<TransformMatrix> {
         match self {
-            Transform::Global(global)
-            | Transform::Calculated { global, .. } => Some(*global),
+            Transform::Global(global) | Transform::Calculated { global, .. } => Some(*global),
             _ => None,
         }
     }
@@ -236,6 +243,7 @@ impl TransformMatrix {
 /// The order in which you multiplicate matters (you are multiplicating matrices)
 impl std::ops::Mul for TransformMatrix {
     type Output = TransformMatrix;
+
     /// Multiplies transform with other transform (the order matters).
     fn mul(self, rhs: TransformMatrix) -> Self::Output {
         TransformMatrix {
@@ -253,11 +261,12 @@ impl std::ops::Mul for TransformMatrix {
 
 impl std::ops::Mul<(Real, Real)> for TransformMatrix {
     type Output = (Real, Real);
+
     /// Multiplies transform with other transform (the order matters).
     fn mul(self, (x, y): (Real, Real)) -> Self::Output {
         (
             self.matrix[0] * x + self.matrix[2] * y + self.matrix[4],
-            self.matrix[1] * x + self.matrix[3] * y + self.matrix[5]
+            self.matrix[1] * x + self.matrix[3] * y + self.matrix[5],
         )
     }
 }
@@ -268,12 +277,12 @@ mod tests {
 
     macro_rules! trans_eq_bool {
         ($t1:expr, $t2:expr) => {
-            $t1.matrix[0] == $t2.matrix[0] &&
-            $t1.matrix[1] == $t2.matrix[1] &&
-            $t1.matrix[2] == $t2.matrix[2] &&
-            $t1.matrix[3] == $t2.matrix[3] &&
-            $t1.matrix[4] == $t2.matrix[4] &&
-            $t1.matrix[5] == $t2.matrix[5]
+            $t1.matrix[0] == $t2.matrix[0]
+                && $t1.matrix[1] == $t2.matrix[1]
+                && $t1.matrix[2] == $t2.matrix[2]
+                && $t1.matrix[3] == $t2.matrix[3]
+                && $t1.matrix[4] == $t2.matrix[4]
+                && $t1.matrix[5] == $t2.matrix[5]
         };
     }
 
@@ -292,35 +301,38 @@ mod tests {
     #[test]
     fn test_transform() {
         // Contructors
-        trans_eq!(TransformMatrix::new(), TransformMatrix {
+        trans_eq!(TransformMatrix::identity(), TransformMatrix {
             matrix: [1.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         });
 
-        trans_eq!(TransformMatrix::new().with_translation(11.1, 22.2), TransformMatrix {
-            matrix: [1.0, 0.0, 0.0, 1.0, 11.1, 22.2],
-        });
+        trans_eq!(
+            TransformMatrix::identity().with_translation(11.1, 22.2),
+            TransformMatrix {
+                matrix: [1.0, 0.0, 0.0, 1.0, 11.1, 22.2],
+            }
+        );
 
-        trans_eq!(TransformMatrix::new().with_scale(11.1, 22.2), TransformMatrix {
+        trans_eq!(TransformMatrix::identity().with_scale(11.1, 22.2), TransformMatrix {
             matrix: [11.1, 0.0, 0.0, 22.2, 0.0, 0.0],
         });
 
-        trans_eq!(TransformMatrix::new().with_skew(11.1, 22.2), TransformMatrix {
+        trans_eq!(TransformMatrix::identity().with_skew(11.1, 22.2), TransformMatrix {
             matrix: [1.0, 22.2, 11.1, 1.0, 0.0, 0.0],
         });
 
-        let angle = 90.0.to_radians();
-        trans_eq!(TransformMatrix::new().with_rotation(angle), TransformMatrix {
+        let angle = 90_f32.to_radians();
+        trans_eq!(TransformMatrix::identity().with_rotation(angle), TransformMatrix {
             matrix: [angle.cos(), angle.sin(), -angle.sin(), angle.cos(), 0.0, 0.0],
         });
 
         // Multiplication
-        let identity = TransformMatrix::new();
-        let trans = TransformMatrix::new().with_translation(10.0, 20.0);
+        let identity = TransformMatrix::identity();
+        let trans = TransformMatrix::identity().with_translation(10.0, 20.0);
         trans_eq!(identity * trans, trans);
         trans_eq!(trans * identity, trans);
         trans_eq!(identity * identity, identity);
-        let a = TransformMatrix::new().with_rotation(123.0);
-        let b = TransformMatrix::new().with_skew(66.6, 1337.2);
+        let a = TransformMatrix::identity().with_rotation(123.0);
+        let b = TransformMatrix::identity().with_skew(66.6, 1337.2);
         trans_not_eq!(a * b, b * a);
     }
 }

@@ -1,11 +1,11 @@
 use std::{env, mem, time::Duration};
 
-use exgui_render_nanovg::NanovgRender;
-use exgui_controller_glutin::{App, glutin};
 use exgui::{
-    builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*,
-    MousePos, Shaped, Real, VirtualKeyCode, SystemMessage,
+    builder::*, ChangeView, Color, Comp, Model, MousePos, Node, PathCommand::*, Real, Shaped, SystemMessage,
+    VirtualKeyCode,
 };
+use exgui_controller_glutin::{glutin, App};
+use exgui_render_nanovg::NanovgRender;
 
 enum CaretAction {
     Put(Real),
@@ -72,7 +72,7 @@ impl Caret {
             _ => {
                 self.reset_blink();
                 self.show = true;
-            }
+            },
         }
     }
 }
@@ -125,35 +125,33 @@ impl Model for EditBox {
                     ChangeView::None
                 }
             },
-            Msg::OnKeyDown(keycode) if self.focus => {
-                match keycode {
-                    VirtualKeyCode::Left => {
-                        self.caret.update_action(CaretAction::MoveLeft);
-                        ChangeView::Modify
-                    }
-                    VirtualKeyCode::Right => {
-                        self.caret.update_action(CaretAction::MoveRight);
-                        ChangeView::Modify
-                    }
-                    VirtualKeyCode::Home => {
-                        self.caret.update_action(CaretAction::MoveStart);
-                        ChangeView::Modify
-                    }
-                    VirtualKeyCode::End => {
-                        self.caret.update_action(CaretAction::MoveEnd);
-                        ChangeView::Modify
-                    }
-                    VirtualKeyCode::Delete if self.editable => {
-                        self.caret.update_action(CaretAction::Delete);
-                        ChangeView::Modify
-                    }
-                    VirtualKeyCode::Backspace if self.editable => {
-                        self.caret.update_action(CaretAction::Backspace);
-                        ChangeView::Modify
-                    }
-                    _ => ChangeView::None,
-                }
-            }
+            Msg::OnKeyDown(keycode) if self.focus => match keycode {
+                VirtualKeyCode::Left => {
+                    self.caret.update_action(CaretAction::MoveLeft);
+                    ChangeView::Modify
+                },
+                VirtualKeyCode::Right => {
+                    self.caret.update_action(CaretAction::MoveRight);
+                    ChangeView::Modify
+                },
+                VirtualKeyCode::Home => {
+                    self.caret.update_action(CaretAction::MoveStart);
+                    ChangeView::Modify
+                },
+                VirtualKeyCode::End => {
+                    self.caret.update_action(CaretAction::MoveEnd);
+                    ChangeView::Modify
+                },
+                VirtualKeyCode::Delete if self.editable => {
+                    self.caret.update_action(CaretAction::Delete);
+                    ChangeView::Modify
+                },
+                VirtualKeyCode::Backspace if self.editable => {
+                    self.caret.update_action(CaretAction::Backspace);
+                    ChangeView::Modify
+                },
+                _ => ChangeView::None,
+            },
             Msg::Input(ch) if self.editable => {
                 if !(ch.is_ascii_control() || ch.is_control()) {
                     self.caret.update_action(CaretAction::Input(ch));
@@ -161,7 +159,7 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
-            }
+            },
             Msg::Draw(elapsed) if self.focus => {
                 self.caret.blink += elapsed;
                 if let CaretAction::Redraw = self.caret.action {
@@ -172,13 +170,13 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
-            }
+            },
             Msg::OnBlur if self.focus => {
                 self.focus = false;
                 self.caret.reset();
                 self.caret.action = CaretAction::Blink;
                 ChangeView::Modify
-            }
+            },
             _ => ChangeView::None,
         }
     }
@@ -186,34 +184,32 @@ impl Model for EditBox {
     fn build_view(&self) -> Node<Self> {
         group()
             .transform(translate(50.0, 50.0))
-            .child(rect()
-                .id("field")
-                .left_top_pos(0, 0)
-                .padding_left_and_right(8.0)
-                .padding_top_and_bottom(4.0)
-                .width(400)
-                .height(40)
-                .rounding(4)
-                .stroke((Color::Blue, 2, 0.5))
-                .on_mouse_down(|case| Msg::OnFocus(case.event.pos))
-                .on_blur(|_| Msg::OnBlur)
-                .on_key_down(|case| {
-                    if let Some(keycode) = case.event.keycode {
-                        Msg::OnKeyDown(keycode)
-                    } else {
-                        Msg::None
-                    }
-                })
-                .on_input_char(|case| Msg::Input(case.event))
-                .child(group()
-                    .id("clip_area")
-                    .clip(-1, 0, 400 - 16, 40 - 8)
-                    .child(text(&self.initial_text)
-                        .id("text")
-                        .font_name("Roboto")
-                        .font_size(32)
-                    )
-                )
+            .child(
+                rect()
+                    .id("field")
+                    .left_top_pos(0, 0)
+                    .padding_left_and_right(8.0)
+                    .padding_top_and_bottom(4.0)
+                    .width(400)
+                    .height(40)
+                    .rounding(4)
+                    .stroke((Color::Blue, 2, 0.5))
+                    .on_mouse_down(|case| Msg::OnFocus(case.event.pos))
+                    .on_blur(|_| Msg::OnBlur)
+                    .on_key_down(|case| {
+                        if let Some(keycode) = case.event.keycode {
+                            Msg::OnKeyDown(keycode)
+                        } else {
+                            Msg::None
+                        }
+                    })
+                    .on_input_char(|case| Msg::Input(case.event))
+                    .child(
+                        group()
+                            .id("clip_area")
+                            .clip(-1, 0, 400 - 16, 40 - 8)
+                            .child(text(&self.initial_text).id("text").font_name("Roboto").font_size(32)),
+                    ),
             )
             .build()
     }
@@ -226,12 +222,19 @@ impl Model for EditBox {
 
         match self.caret.action.take() {
             CaretAction::Put(mut focus_pos) => {
-                let matrix = text.transform.global_matrix().unwrap_or_else(|| text.transform.matrix());
+                let matrix = text
+                    .transform
+                    .global_matrix()
+                    .unwrap_or_else(|| text.transform.matrix());
                 if !matrix.is_identity() {
                     focus_pos = focus_pos - matrix.translate_xy().0;
                 }
 
-                if let Some(idx) = text.glyph_positions.iter().position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x) {
+                if let Some(idx) = text
+                    .glyph_positions
+                    .iter()
+                    .position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x)
+                {
                     let pos = text.glyph_positions[idx];
                     let before = focus_pos - pos.min_x;
                     let after = pos.max_x - focus_pos;
@@ -253,7 +256,12 @@ impl Model for EditBox {
                 self.caret.update_action(CaretAction::Redraw);
             },
             CaretAction::MoveRight => {
-                self.caret.idx = self.caret.idx + if text.glyph_positions.len() > self.caret.idx { 1 } else { 0 };
+                self.caret.idx = self.caret.idx
+                    + if text.glyph_positions.len() > self.caret.idx {
+                        1
+                    } else {
+                        0
+                    };
                 self.caret.update_action(CaretAction::Redraw);
             },
             CaretAction::MoveStart => {
@@ -272,20 +280,20 @@ impl Model for EditBox {
                 }
                 self.caret.idx += 1;
                 self.caret.update_action(CaretAction::Redraw);
-            }
+            },
             CaretAction::Delete => {
                 if self.caret.idx < text.glyph_positions.len() {
                     text.remove(self.caret.idx);
                     self.caret.update_action(CaretAction::Redraw);
                 }
-            }
+            },
             CaretAction::Backspace => {
                 if self.caret.idx > 0 {
                     self.caret.idx -= 1;
                     text.remove(self.caret.idx);
                     self.caret.update_action(CaretAction::Redraw);
                 }
-            }
+            },
             CaretAction::Redraw => {
                 let caret_pos = if self.caret.idx > 0 {
                     text.glyph_positions[self.caret.idx - 1].max_x
@@ -297,10 +305,7 @@ impl Model for EditBox {
                 Self::draw_caret(view, caret_pos, text_end_pos, line_height, self.caret.show);
             },
             CaretAction::Blink => {
-                if let Some(path) = view
-                    .get_prim_mut("caret")
-                    .and_then(|caret| caret.shape.path_mut())
-                {
+                if let Some(path) = view.get_prim_mut("caret").and_then(|caret| caret.shape.path_mut()) {
                     path.transparency = if self.caret.show { 0.0 } else { 1.0 };
                 }
             },
@@ -311,10 +316,7 @@ impl Model for EditBox {
 
 impl EditBox {
     fn draw_caret(view: &mut Node<Self>, caret_pos: Real, text_end_pos: Real, line_height: Real, show: bool) {
-        if let Some(path) = view
-            .get_prim_mut("caret")
-            .and_then(|caret| caret.shape.path_mut())
-        {
+        if let Some(path) = view.get_prim_mut("caret").and_then(|caret| caret.shape.path_mut()) {
             path.cmd[0] = Move([caret_pos, 0.0]);
             path.cmd[1] = Line([caret_pos, line_height]);
             path.transparency = if show { 0.0 } else { 1.0 };
@@ -323,25 +325,20 @@ impl EditBox {
                 path(vec![Move([caret_pos, 0.0]), Line([caret_pos, line_height])])
                     .id("caret")
                     .stroke((Color::Black, 2, 0.5))
-                    .build()
+                    .build(),
             );
         }
 
         let (min_x, max_x) = view
             .get_prim_mut("clip_area")
-            .and_then(|clip_area|  clip_area.shape.group_mut())
+            .and_then(|clip_area| clip_area.shape.group_mut())
             .expect("Clip area expected")
             .clip
             .scissor()
-            .map(|scissor| {
-                (scissor.x.val(), scissor.x.val() + scissor.width.val())
-            })
+            .map(|scissor| (scissor.x.val(), scissor.x.val() + scissor.width.val()))
             .expect("Clip scissor expected");
 
-        let text_transform = view
-            .get_prim_mut("text")
-            .expect("Text expected")
-            .transform_mut();
+        let text_transform = view.get_prim_mut("text").expect("Text expected").transform_mut();
         let shift = text_transform
             .local_matrix()
             .expect("Local transform expected")
@@ -368,11 +365,16 @@ fn main() {
             .with_vsync(true)
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default()
-    ).unwrap();
+        NanovgRender::default(),
+    )
+    .unwrap();
     app.init().unwrap();
 
-    let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
+    let font_path = env::current_dir()
+        .unwrap()
+        .join("examples")
+        .join("resources")
+        .join("Roboto-Regular.ttf");
     app.renderer_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(EditBox::create(()));

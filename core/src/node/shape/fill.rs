@@ -1,5 +1,5 @@
+use super::{Color, Gradient, Paint};
 use crate::node::ConvertTo;
-use super::{Paint, Color, Gradient};
 
 #[derive(Debug, Default, Clone, Copy, PartialEq)]
 pub struct Fill {
@@ -18,9 +18,7 @@ impl Fill {
 
 impl From<Color> for Fill {
     fn from(color: Color) -> Self {
-        Self {
-            paint: color.into(),
-        }
+        Self { paint: color.into() }
     }
 }
 
@@ -46,9 +44,7 @@ impl ConvertTo<Option<Fill>> for (Color, f32) {
 
 impl From<Gradient> for Fill {
     fn from(gradient: Gradient) -> Self {
-        Self {
-            paint: gradient.into(),
-        }
+        Self { paint: gradient.into() }
     }
 }
 

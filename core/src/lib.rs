@@ -1,10 +1,4 @@
-pub use self::{
-    controller::*,
-    listener::*,
-    model::*,
-    node::*,
-    render::*,
-};
+pub use self::{controller::*, listener::*, model::*, node::*, render::*};
 
 pub mod controller;
 pub mod listener;

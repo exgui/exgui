@@ -1,28 +1,18 @@
 pub use self::{
-    rect::*,
-    circle::*,
-    path::*,
-    group::*,
-    padding::*,
-    rounding::*,
-    text::*,
-    paint::*,
-    stroke::*,
-    fill::*,
-    translate::*,
+    circle::*, fill::*, group::*, padding::*, paint::*, path::*, rect::*, rounding::*, stroke::*, text::*, translate::*,
 };
 use crate::{Real, Transform};
 
-pub mod rect;
 pub mod circle;
-pub mod path;
+pub mod fill;
 pub mod group;
 pub mod padding;
-pub mod rounding;
-pub mod text;
 pub mod paint;
+pub mod path;
+pub mod rect;
+pub mod rounding;
 pub mod stroke;
-pub mod fill;
+pub mod text;
 pub mod translate;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -275,7 +265,10 @@ impl From<Text> for Shape {
 
 impl From<String> for Shape {
     fn from(text: String) -> Self {
-        Shape::Text(Text { content: text, ..Default::default() })
+        Shape::Text(Text {
+            content: text,
+            ..Default::default()
+        })
     }
 }
 

@@ -1,5 +1,5 @@
-use crate::{Comp, SystemMessage};
 use super::InputEvent;
+use crate::{Comp, SystemMessage};
 
 #[derive(Debug, Hash, Ord, PartialOrd, PartialEq, Eq, Clone, Copy)]
 pub enum VirtualKeyCode {
@@ -195,9 +195,7 @@ pub struct KeyboardController {
 
 impl KeyboardController {
     pub fn new() -> Self {
-        Self {
-            last_event: None,
-        }
+        Self { last_event: None }
     }
 
     pub fn last_event(&self) -> Option<&KeyboardEvent> {

@@ -1,4 +1,4 @@
-use crate::node::{Real, Clip, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Fill, Real, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Group {

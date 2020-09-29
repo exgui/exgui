@@ -91,7 +91,7 @@ pub enum Gradient {
         outer_radius: Real,
         start_color: Color,
         end_color: Color,
-    }
+    },
 }
 
 impl From<Gradient> for Paint {

@@ -1,14 +1,17 @@
-use std::{thread, time::{Instant, Duration}};
+use std::{
+    thread,
+    time::{Duration, Instant},
+};
 
-pub use {gl, glutin};
+use exgui_core::{controller, Color, Comp, KeyboardController, MouseController, Real, Render, SystemMessage};
+pub use gl;
+pub use glutin;
 use glutin::{
-    event::{Event, WindowEvent, KeyboardInput, VirtualKeyCode, ElementState, MouseButton, MouseScrollDelta},
+    event::{ElementState, Event, KeyboardInput, MouseButton, MouseScrollDelta, VirtualKeyCode, WindowEvent},
     event_loop::{ControlFlow, EventLoop},
     window::WindowBuilder,
-    ContextBuilder, PossiblyCurrent, NotCurrent, WindowedContext,
-    CreationError, ContextError,
+    ContextBuilder, ContextError, CreationError, NotCurrent, PossiblyCurrent, WindowedContext,
 };
-use exgui_core::{Real, Comp, Color, MouseController, KeyboardController, controller, SystemMessage, Render};
 
 pub enum AppState {
     Exit,
@@ -76,9 +79,7 @@ impl<RE> From<ContextError> for AppError<RE> {
 
 impl<R: Render + 'static> App<R> {
     pub fn new(
-        window_builder: WindowBuilder,
-        context_builder: ContextBuilder<NotCurrent>,
-        renderer: R,
+        window_builder: WindowBuilder, context_builder: ContextBuilder<NotCurrent>, renderer: R,
     ) -> Result<Self, AppError<R::Error>> {
         let event_loop = EventLoop::new();
         let context = AppContext::NotCurrent(Some(context_builder.build_windowed(window_builder, &event_loop)?));
@@ -123,14 +124,19 @@ impl<R: Render + 'static> App<R> {
     }
 
     pub fn run_proc(
-        self,
-        mut comp: Comp,
-        mut proc: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static
+        self, mut comp: Comp,
+        mut proc: impl FnMut(&mut Comp, &WindowedContext<PossiblyCurrent>, &mut R) -> AppState + 'static,
     ) -> ! {
-        let App { event_loop, mut context, mut renderer, exit_by_escape, .. } = self;
+        let App {
+            event_loop,
+            mut context,
+            mut renderer,
+            exit_by_escape,
+            ..
+        } = self;
         let mut mouse_controller = MouseController::new();
         let keyboard_controller = KeyboardController::new();
-        let context = context.take_current().expect("PossiblyCurrent context does not exist");//ok_or(AppError::PossiblyCurrentContextNotExist)?;
+        let context = context.take_current().expect("PossiblyCurrent context does not exist"); //ok_or(AppError::PossiblyCurrentContextNotExist)?;
         let mut last_time = Instant::now();
 
         event_loop.run(move |event, _, control_flow| {
@@ -141,54 +147,70 @@ impl<R: Render + 'static> App<R> {
                 Event::WindowEvent { event, .. } => match event {
                     WindowEvent::Resized(size) => {
                         context.resize(size);
-                        comp.send_system_msg(SystemMessage::WindowResized { width: size.width, height: size.height });
-                    }
+                        comp.send_system_msg(SystemMessage::WindowResized {
+                            width: size.width,
+                            height: size.height,
+                        });
+                    },
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
                         return;
-                    }
+                    },
                     WindowEvent::ReceivedCharacter(ch) => {
                         keyboard_controller.input_char(&mut comp, ch);
-                    }
+                    },
                     WindowEvent::KeyboardInput {
-                        input: KeyboardInput {
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            ..
-                        },
+                        input:
+                            KeyboardInput {
+                                virtual_keycode: Some(VirtualKeyCode::Escape),
+                                ..
+                            },
                         ..
                     } if exit_by_escape => {
                         *control_flow = ControlFlow::Exit;
                         return;
-                    }
-                    WindowEvent::KeyboardInput { input, ..} => {
-                        let KeyboardInput { scancode, state, virtual_keycode, .. } = input;
+                    },
+                    WindowEvent::KeyboardInput { input, .. } => {
+                        let KeyboardInput {
+                            scancode,
+                            state,
+                            virtual_keycode,
+                            ..
+                        } = input;
                         if let ElementState::Pressed = state {
-                            keyboard_controller.pressed_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
+                            keyboard_controller
+                                .pressed_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
                         } else {
-                            keyboard_controller.released_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
+                            keyboard_controller
+                                .released_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
                         }
-                    }
+                    },
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_controller.update_pos(position.x as Real, position.y as Real);
                     },
-                    WindowEvent::MouseInput { state: ElementState::Pressed, button, .. } => {
+                    WindowEvent::MouseInput {
+                        state: ElementState::Pressed,
+                        button,
+                        ..
+                    } => {
                         mouse_controller.pressed_comp(&mut comp, convert_mouse_button(button));
                     },
-                    WindowEvent::MouseWheel { delta: MouseScrollDelta::LineDelta(x, y), .. } => {
+                    WindowEvent::MouseWheel {
+                        delta: MouseScrollDelta::LineDelta(x, y),
+                        ..
+                    } => {
                         mouse_controller.mouse_scroll(&mut comp, (x, y));
                     },
                     _ => (),
                 },
                 Event::MainEventsCleared => {
                     context.window().request_redraw();
-                }
+                },
                 Event::RedrawRequested(_) => {
                     let size = context.window().inner_size();
                     unsafe {
                         gl::Viewport(0, 0, size.width as i32, size.height as i32);
-                        gl::Clear(
-                            gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT,
-                        );
+                        gl::Clear(gl::COLOR_BUFFER_BIT | gl::DEPTH_BUFFER_BIT | gl::STENCIL_BUFFER_BIT);
                     }
 
                     if let AppState::Exit = proc(&mut comp, &context, &mut renderer) {
@@ -207,7 +229,7 @@ impl<R: Render + 'static> App<R> {
                     } else {
                         thread::sleep(Duration::from_millis(10));
                     }
-                }
+                },
                 _ => (),
             }
         })
@@ -390,10 +412,7 @@ fn convert_keyboard_event(scancode: u32, keycode: Option<VirtualKeyCode>) -> con
         VirtualKeyCode::Paste => controller::VirtualKeyCode::Paste,
         VirtualKeyCode::Cut => controller::VirtualKeyCode::Cut,
     });
-    controller::KeyboardEvent {
-        scancode,
-        keycode,
-    }
+    controller::KeyboardEvent { scancode, keycode }
 }
 
 fn convert_mouse_button(button: MouseButton) -> controller::MouseButton {

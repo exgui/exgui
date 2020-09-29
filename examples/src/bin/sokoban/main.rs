@@ -1,11 +1,11 @@
 use std::{env, time::Duration};
 
-use exgui_render_nanovg::NanovgRender;
-use exgui_controller_glutin::{App, glutin};
 use exgui::{
-    builder::*, Model, ChangeView, Node, Comp, Color, PathCommand::*, Transform,
-    Real, VirtualKeyCode, SystemMessage, Pct, Stroke, LineJoin, Shaped,
+    builder::*, ChangeView, Color, Comp, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped, Stroke,
+    SystemMessage, Transform, VirtualKeyCode,
 };
+use exgui_controller_glutin::{glutin, App};
+use exgui_render_nanovg::NanovgRender;
 
 use self::{
     animate::Animate,
@@ -23,8 +23,8 @@ struct Canvas {
 }
 
 impl Canvas {
-    const WIDTH: Real = 800.0;
     const HEIGHT: Real = 600.0;
+    const WIDTH: Real = 800.0;
 
     fn calc_cell_size(_width: Real, height: Real) -> Real {
         height / 24.0
@@ -68,9 +68,13 @@ impl Docker {
     const SPEED: f32 = 0.3;
 
     fn is_transient(&self) -> bool {
-        self.x.is_transient() || self.y.is_transient() || self.skew_box.as_ref().map(|skew_box| {
-            skew_box.x.is_transient() || skew_box.y.is_transient()
-        }).unwrap_or(false)
+        self.x.is_transient()
+            || self.y.is_transient()
+            || self
+                .skew_box
+                .as_ref()
+                .map(|skew_box| skew_box.x.is_transient() || skew_box.y.is_transient())
+                .unwrap_or(false)
     }
 
     fn animate(&mut self, elapsed: Duration) {
@@ -97,10 +101,7 @@ enum Direction {
 }
 
 enum Msg {
-    Resize {
-        width: Real,
-        height: Real,
-    },
+    Resize { width: Real, height: Real },
     Draw(Duration),
     Scroll(Real),
     KeyDown(VirtualKeyCode),
@@ -123,8 +124,7 @@ struct Game {
 
 impl Game {
     fn is_transient(&self) -> bool {
-        self.canvas.scale_factor.is_transient()
-        || self.docker.is_transient()
+        self.canvas.scale_factor.is_transient() || self.docker.is_transient()
     }
 
     fn animate(&mut self, elapsed: Duration) {
@@ -182,7 +182,12 @@ impl Game {
             Direction::Down => (self.docker.row + 1, self.docker.col),
         };
 
-        if self.level.cell(to_row, to_col).map(|cell| cell.contains_box()).unwrap_or(false) {
+        if self
+            .level
+            .cell(to_row, to_col)
+            .map(|cell| cell.contains_box())
+            .unwrap_or(false)
+        {
             let (to_box_row, to_box_col) = match dir {
                 Direction::Left => (to_row, to_col - 1),
                 Direction::Right => (to_row, to_col + 1),
@@ -262,14 +267,16 @@ impl Model for Game {
                             self.next_level();
                             ChangeView::Rebuild
                         },
-                        _ => ChangeView::None
+                        _ => ChangeView::None,
                     }
                 }
-            }
+            },
             Msg::Scroll(delta) => {
-                self.canvas.scale_factor.set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
+                self.canvas
+                    .scale_factor
+                    .set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
                 ChangeView::Rebuild
-            }
+            },
             Msg::KeyDown(VirtualKeyCode::Backspace) => {
                 self.reset_level();
                 ChangeView::Rebuild
@@ -280,11 +287,13 @@ impl Model for Game {
                     VirtualKeyCode::Right if !self.docker.is_transient() => self.move_docker(Direction::Right),
                     VirtualKeyCode::Up if !self.docker.is_transient() => self.move_docker(Direction::Up),
                     VirtualKeyCode::Down if !self.docker.is_transient() => self.move_docker(Direction::Down),
-                    VirtualKeyCode::Enter if self.state == GameState::LevelComplete => self.state = GameState::NextLevel,
+                    VirtualKeyCode::Enter if self.state == GameState::LevelComplete => {
+                        self.state = GameState::NextLevel
+                    },
                     _ => (),
                 };
                 ChangeView::None
-            }
+            },
             _ => ChangeView::None,
         }
     }
@@ -328,28 +337,36 @@ impl Model for Game {
             .height(Pct(100))
             .fill(Color::RGB(0.8, 0.9, 1.0))
             .on_mouse_scroll(|case| Msg::Scroll(case.event.delta.1 as Real))
-            .child(group()
-                .id("field")
-                .transform(self.field_transform())
-                .children(cells)
-                .child(rect()
-                    .id("info")
-                    .fill(Color::RGBA(0.0, 0.3, 0.0, 0.7))
-                    .stroke((Color::RGB(0.0, 0.3, 0.0), 1))
-                    .transparency(1.0)
-                    .padding(10)
-                    .transform(translate(self.canvas.width / 2.0 - 83.0, self.canvas.height / 2.0 - 22.0))
-                    .child(text(format!("Level {} completed", self.level.number()))
-                        .font_name("Roboto")
-                        .font_size(24)
-                        .fill(Color::White)
+            .child(
+                group()
+                    .id("field")
+                    .transform(self.field_transform())
+                    .children(cells)
+                    .child(
+                        rect()
+                            .id("info")
+                            .fill(Color::RGBA(0.0, 0.3, 0.0, 0.7))
+                            .stroke((Color::RGB(0.0, 0.3, 0.0), 1))
+                            .transparency(1.0)
+                            .padding(10)
+                            .transform(translate(
+                                self.canvas.width / 2.0 - 83.0,
+                                self.canvas.height / 2.0 - 22.0,
+                            ))
+                            .child(
+                                text(format!("Level {} completed", self.level.number()))
+                                    .font_name("Roboto")
+                                    .font_size(24)
+                                    .fill(Color::White),
+                            ),
                     )
-                )
-                .on_key_down(|case| if let Some(code) = case.event.keycode {
-                    Msg::KeyDown(code)
-                } else {
-                    Msg::None
-                })
+                    .on_key_down(|case| {
+                        if let Some(code) = case.event.keycode {
+                            Msg::KeyDown(code)
+                        } else {
+                            Msg::None
+                        }
+                    }),
             )
             .build()
     }
@@ -392,37 +409,44 @@ impl Game {
             .height(self.canvas.cell_size)
             .transparency(1.0)
             .transform(translate(x, y))
-            .child(rect()
-                .width(brick_chunk_size)
-                .height(brick_height)
-                .fill(brick_color)
-                .rounding_top_right(round_radius)
-                .rounding_bottom_right(round_radius)
-                .transform(translate(0.0, brick_space / 2.0))
+            .child(
+                rect()
+                    .width(brick_chunk_size)
+                    .height(brick_height)
+                    .fill(brick_color)
+                    .rounding_top_right(round_radius)
+                    .rounding_bottom_right(round_radius)
+                    .transform(translate(0.0, brick_space / 2.0)),
             )
-            .child(rect()
-                .width(brick_chunk_size * 2.0)
-                .height(brick_height)
-                .fill(brick_color)
-                .rounding_top_left(round_radius)
-                .rounding_bottom_left(round_radius)
-                .transform(translate(brick_chunk_size + brick_space, brick_space / 2.0))
+            .child(
+                rect()
+                    .width(brick_chunk_size * 2.0)
+                    .height(brick_height)
+                    .fill(brick_color)
+                    .rounding_top_left(round_radius)
+                    .rounding_bottom_left(round_radius)
+                    .transform(translate(brick_chunk_size + brick_space, brick_space / 2.0)),
             )
-            .child(rect()
-                .width(brick_chunk_size * 2.0)
-                .height(brick_height)
-                .fill(brick_color)
-                .rounding_top_right(round_radius)
-                .rounding_bottom_right(round_radius)
-                .transform(translate(0.0, brick_height + brick_space * 1.5))
+            .child(
+                rect()
+                    .width(brick_chunk_size * 2.0)
+                    .height(brick_height)
+                    .fill(brick_color)
+                    .rounding_top_right(round_radius)
+                    .rounding_bottom_right(round_radius)
+                    .transform(translate(0.0, brick_height + brick_space * 1.5)),
             )
-            .child(rect()
-                .width(brick_chunk_size)
-                .height(brick_height)
-                .fill(brick_color)
-                .rounding_top_left(round_radius)
-                .rounding_bottom_left(round_radius)
-                .transform(translate(brick_chunk_size * 2.0 + brick_space, brick_height + brick_space * 1.5))
+            .child(
+                rect()
+                    .width(brick_chunk_size)
+                    .height(brick_height)
+                    .fill(brick_color)
+                    .rounding_top_left(round_radius)
+                    .rounding_bottom_left(round_radius)
+                    .transform(translate(
+                        brick_chunk_size * 2.0 + brick_space,
+                        brick_height + brick_space * 1.5,
+                    )),
             )
             .build()
     }
@@ -440,40 +464,57 @@ impl Game {
             .height(self.canvas.cell_size)
             .transparency(1.0)
             .transform(translate(x, y))
-            .child(rect()
-                .width(self.canvas.cell_size - board_space)
-                .height(board_chunk_size)
-                .fill(board_color)
-                .rounding(round_radius)
-                .transform(translate(board_space_half, board_space_half))
+            .child(
+                rect()
+                    .width(self.canvas.cell_size - board_space)
+                    .height(board_chunk_size)
+                    .fill(board_color)
+                    .rounding(round_radius)
+                    .transform(translate(board_space_half, board_space_half)),
             )
-            .child(rect()
-                .width(board_chunk_size)
-                .height(board_chunk_size)
-                .fill(board_color)
-                .rounding(round_radius)
-                .transform(translate(board_space_half, board_space_half + board_chunk_size + board_space))
+            .child(
+                rect()
+                    .width(board_chunk_size)
+                    .height(board_chunk_size)
+                    .fill(board_color)
+                    .rounding(round_radius)
+                    .transform(translate(
+                        board_space_half,
+                        board_space_half + board_chunk_size + board_space,
+                    )),
             )
-            .child(rect()
-                .width(board_chunk_size)
-                .height(board_chunk_size)
-                .fill(board_color)
-                .rounding(round_radius)
-                .transform(translate(board_space_half + board_chunk_size + board_space, board_space_half + board_chunk_size + board_space))
+            .child(
+                rect()
+                    .width(board_chunk_size)
+                    .height(board_chunk_size)
+                    .fill(board_color)
+                    .rounding(round_radius)
+                    .transform(translate(
+                        board_space_half + board_chunk_size + board_space,
+                        board_space_half + board_chunk_size + board_space,
+                    )),
             )
-            .child(rect()
-                .width(board_chunk_size)
-                .height(board_chunk_size)
-                .fill(board_color)
-                .rounding(round_radius)
-                .transform(translate(board_space_half + (board_chunk_size + board_space) * 2.0, board_space_half + board_chunk_size + board_space))
+            .child(
+                rect()
+                    .width(board_chunk_size)
+                    .height(board_chunk_size)
+                    .fill(board_color)
+                    .rounding(round_radius)
+                    .transform(translate(
+                        board_space_half + (board_chunk_size + board_space) * 2.0,
+                        board_space_half + board_chunk_size + board_space,
+                    )),
             )
-            .child(rect()
-                .width(self.canvas.cell_size - board_space)
-                .height(board_chunk_size)
-                .fill(board_color)
-                .rounding(round_radius)
-                .transform(translate(board_space_half, board_space_half + board_chunk_size * 2.0 + board_space * 2.0))
+            .child(
+                rect()
+                    .width(self.canvas.cell_size - board_space)
+                    .height(board_chunk_size)
+                    .fill(board_color)
+                    .rounding(round_radius)
+                    .transform(translate(
+                        board_space_half,
+                        board_space_half + board_chunk_size * 2.0 + board_space * 2.0,
+                    )),
             )
             .build()
     }
@@ -489,16 +530,21 @@ impl Game {
             .height(self.canvas.cell_size)
             .transparency(1.0)
             .transform(translate(x, y))
-            .child(circle()
-                .radius(head_radius)
-                .fill(docker_color)
-                .transform(translate(self.canvas.cell_size / 2.0, head_radius + docker_brush_size))
+            .child(
+                circle()
+                    .radius(head_radius)
+                    .fill(docker_color)
+                    .transform(translate(self.canvas.cell_size / 2.0, head_radius + docker_brush_size)),
             )
-            .child(path(vec![
+            .child(
+                path(vec![
                     Move([docker_brush_size * 1.8, self.canvas.cell_size - docker_brush_size * 1.2]),
                     BezCtrl([self.canvas.cell_size / 2.0, head_radius * 2.0]),
-                    QuadBezTo([self.canvas.cell_size - docker_brush_size * 1.8, self.canvas.cell_size - docker_brush_size * 1.2]),
-                    LineAlonX(docker_brush_size * 1.8)
+                    QuadBezTo([
+                        self.canvas.cell_size - docker_brush_size * 1.8,
+                        self.canvas.cell_size - docker_brush_size * 1.2,
+                    ]),
+                    LineAlonX(docker_brush_size * 1.8),
                 ])
                 .fill(docker_color)
                 .stroke(Stroke {
@@ -506,7 +552,7 @@ impl Game {
                     width: docker_brush_size,
                     line_join: LineJoin::Round,
                     ..Default::default()
-                })
+                }),
             )
             .build()
     }
@@ -523,15 +569,20 @@ impl Game {
             .height(self.canvas.cell_size)
             .transparency(1.0)
             .transform(translate(x, y))
-            .child(rect()
-                .width(place_size)
-                .height(place_size)
-                .fill(place_color)
-                .rounding(round_radius)
-                .transform(Transform::new()
-                    .with_rotation(std::f32::consts::PI / 4.0)
-                    .with_translation(self.canvas.cell_size / 2.0, (self.canvas.cell_size - place_diagonal) / 2.0)
-                )
+            .child(
+                rect()
+                    .width(place_size)
+                    .height(place_size)
+                    .fill(place_color)
+                    .rounding(round_radius)
+                    .transform(
+                        Transform::new()
+                            .with_rotation(std::f32::consts::PI / 4.0)
+                            .with_translation(
+                                self.canvas.cell_size / 2.0,
+                                (self.canvas.cell_size - place_diagonal) / 2.0,
+                            ),
+                    ),
             )
             .build()
     }
@@ -547,11 +598,16 @@ fn main() {
             .with_double_buffer(Some(true))
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default()
-    ).unwrap();
+        NanovgRender::default(),
+    )
+    .unwrap();
     app.init().unwrap();
 
-    let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
+    let font_path = env::current_dir()
+        .unwrap()
+        .join("examples")
+        .join("resources")
+        .join("Roboto-Regular.ttf");
     app.renderer_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(Game::create(()));

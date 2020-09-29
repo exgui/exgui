@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
-use exgui_core::{
-    Model, Node, Prim, Shape, Rect, Circle, Text, Group, Path, PathCommand, RealValue, Stroke, Fill,
-    AlignHor, AlignVer, Transform, Comp, EventName, Listener, Padding, Clip, Rounding, Real,
-};
 pub use exgui_core::builder::*;
+use exgui_core::{
+    AlignHor, AlignVer, Circle, Clip, Comp, EventName, Fill, Group, Listener, Model, Node, Padding, Path, PathCommand,
+    Prim, Real, RealValue, Rect, Rounding, Shape, Stroke, Text, Transform,
+};
 
 pub struct PrimBuilder<M: Model> {
     pub children: Vec<Node<M>>,
@@ -113,7 +113,7 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
         self
     }
 
-    fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
+    fn children(mut self, children: impl IntoIterator<Item = Node<M>>) -> Self {
         self.prim.children.extend(children);
         self
     }
@@ -143,7 +143,10 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
         self
     }
 
-    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+    fn clip(
+        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        height: impl Into<RealValue>,
+    ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
@@ -151,10 +154,13 @@ impl<M: Model> Primitive<M> for CircleBuilder<M> {
 
 impl<M: Model> EventHandler<M> for CircleBuilder<M> {
     fn add_listener(&mut self, listener: Listener<M>) {
-        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
+        self.prim
+            .listeners
+            .entry(listener.event_name())
+            .or_default()
+            .push(listener);
     }
 }
-
 
 pub fn rect<M: Model>() -> RectBuilder<M> {
     RectBuilder {
@@ -194,7 +200,10 @@ impl<M: Model> RectBuilder<M> {
         if let Some(rounding) = self.shape.rounding.as_mut() {
             rounding.top_left = radius.into();
         } else {
-            self.shape.rounding = Some(Rounding { top_left: radius.into(), ..Default::default() });
+            self.shape.rounding = Some(Rounding {
+                top_left: radius.into(),
+                ..Default::default()
+            });
         }
         self
     }
@@ -203,7 +212,10 @@ impl<M: Model> RectBuilder<M> {
         if let Some(rounding) = self.shape.rounding.as_mut() {
             rounding.top_right = radius.into();
         } else {
-            self.shape.rounding = Some(Rounding { top_right: radius.into(), ..Default::default() });
+            self.shape.rounding = Some(Rounding {
+                top_right: radius.into(),
+                ..Default::default()
+            });
         }
         self
     }
@@ -212,7 +224,10 @@ impl<M: Model> RectBuilder<M> {
         if let Some(rounding) = self.shape.rounding.as_mut() {
             rounding.bottom_left = radius.into();
         } else {
-            self.shape.rounding = Some(Rounding { bottom_left: radius.into(), ..Default::default() });
+            self.shape.rounding = Some(Rounding {
+                bottom_left: radius.into(),
+                ..Default::default()
+            });
         }
         self
     }
@@ -221,7 +236,10 @@ impl<M: Model> RectBuilder<M> {
         if let Some(rounding) = self.shape.rounding.as_mut() {
             rounding.bottom_right = radius.into();
         } else {
-            self.shape.rounding = Some(Rounding { bottom_right: radius.into(), ..Default::default() });
+            self.shape.rounding = Some(Rounding {
+                bottom_right: radius.into(),
+                ..Default::default()
+            });
         }
         self
     }
@@ -295,7 +313,7 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
         self
     }
 
-    fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
+    fn children(mut self, children: impl IntoIterator<Item = Node<M>>) -> Self {
         self.prim.children.extend(children);
         self
     }
@@ -325,7 +343,10 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
         self
     }
 
-    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+    fn clip(
+        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        height: impl Into<RealValue>,
+    ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
@@ -333,14 +354,20 @@ impl<M: Model> Primitive<M> for RectBuilder<M> {
 
 impl<M: Model> EventHandler<M> for RectBuilder<M> {
     fn add_listener(&mut self, listener: Listener<M>) {
-        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
+        self.prim
+            .listeners
+            .entry(listener.event_name())
+            .or_default()
+            .push(listener);
     }
 }
 
-
 pub fn text<M: Model>(content: impl Into<String>) -> TextBuilder<M> {
     TextBuilder {
-        shape: Text { content: content.into(), ..Text::default() },
+        shape: Text {
+            content: content.into(),
+            ..Text::default()
+        },
         prim: Default::default(),
     }
 }
@@ -402,7 +429,7 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
         self
     }
 
-    fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
+    fn children(mut self, children: impl IntoIterator<Item = Node<M>>) -> Self {
         self.prim.children.extend(children);
         self
     }
@@ -432,7 +459,10 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
         self
     }
 
-    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+    fn clip(
+        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        height: impl Into<RealValue>,
+    ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
@@ -440,14 +470,20 @@ impl<M: Model> Primitive<M> for TextBuilder<M> {
 
 impl<M: Model> EventHandler<M> for TextBuilder<M> {
     fn add_listener(&mut self, listener: Listener<M>) {
-        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
+        self.prim
+            .listeners
+            .entry(listener.event_name())
+            .or_default()
+            .push(listener);
     }
 }
 
-
 pub fn path<M: Model>(cmd: impl Into<Vec<PathCommand>>) -> PathBuilder<M> {
     PathBuilder {
-        shape: Path { cmd: cmd.into(), ..Path::default() },
+        shape: Path {
+            cmd: cmd.into(),
+            ..Path::default()
+        },
         prim: Default::default(),
     }
 }
@@ -457,8 +493,7 @@ pub struct PathBuilder<M: Model> {
     prim: PrimBuilder<M>,
 }
 
-impl<M: Model> PathBuilder<M> {
-}
+impl<M: Model> PathBuilder<M> {}
 
 impl<M: Model> Builder<M> for PathBuilder<M> {
     fn build(self) -> Node<M> {
@@ -489,7 +524,7 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
         self
     }
 
-    fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
+    fn children(mut self, children: impl IntoIterator<Item = Node<M>>) -> Self {
         self.prim.children.extend(children);
         self
     }
@@ -519,7 +554,10 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
         self
     }
 
-    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+    fn clip(
+        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        height: impl Into<RealValue>,
+    ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
@@ -527,15 +565,18 @@ impl<M: Model> Primitive<M> for PathBuilder<M> {
 
 impl<M: Model> EventHandler<M> for PathBuilder<M> {
     fn add_listener(&mut self, listener: Listener<M>) {
-        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
+        self.prim
+            .listeners
+            .entry(listener.event_name())
+            .or_default()
+            .push(listener);
     }
 }
-
 
 pub fn group<M: Model>() -> GroupBuilder<M> {
     GroupBuilder {
         shape: Default::default(),
-        prim: Default::default()
+        prim: Default::default(),
     }
 }
 
@@ -544,8 +585,7 @@ pub struct GroupBuilder<M: Model> {
     prim: PrimBuilder<M>,
 }
 
-impl<M: Model> GroupBuilder<M> {
-}
+impl<M: Model> GroupBuilder<M> {}
 
 impl<M: Model> Builder<M> for GroupBuilder<M> {
     fn build(self) -> Node<M> {
@@ -576,7 +616,7 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
         self
     }
 
-    fn children(mut self, children: impl IntoIterator<Item=Node<M>>) -> Self {
+    fn children(mut self, children: impl IntoIterator<Item = Node<M>>) -> Self {
         self.prim.children.extend(children);
         self
     }
@@ -606,7 +646,10 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
         self
     }
 
-    fn clip(mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>, height: impl Into<RealValue>) -> Self {
+    fn clip(
+        mut self, x: impl Into<RealValue>, y: impl Into<RealValue>, width: impl Into<RealValue>,
+        height: impl Into<RealValue>,
+    ) -> Self {
         self.shape.clip = Clip::new_scissor(x.into(), y.into(), width.into(), height.into());
         self
     }
@@ -614,22 +657,20 @@ impl<M: Model> Primitive<M> for GroupBuilder<M> {
 
 impl<M: Model> EventHandler<M> for GroupBuilder<M> {
     fn add_listener(&mut self, listener: Listener<M>) {
-        self.prim.listeners.entry(listener.event_name()).or_default().push(listener);
+        self.prim
+            .listeners
+            .entry(listener.event_name())
+            .or_default()
+            .push(listener);
     }
 }
 
-
 pub fn comp(model: impl Model) -> CompBuilder {
-    CompBuilder {
-        comp: Comp::new(model)
-    }
+    CompBuilder { comp: Comp::new(model) }
 }
 
 pub struct CompBuilder {
     comp: Comp,
-}
-
-impl CompBuilder {
 }
 
 impl<M: Model> Builder<M> for CompBuilder {
@@ -650,7 +691,7 @@ impl Entity for CompBuilder {
     }
 }
 
-// todo: use RealValue's
+// TODO: use RealValue's
 pub fn translate(x: impl Into<Real>, y: impl Into<Real>) -> Transform {
     Transform::new().with_translation(x.into(), y.into())
 }

@@ -1,4 +1,7 @@
-use std::{time::Duration, ops::{Add, Sub, Deref}};
+use std::{
+    ops::{Add, Deref, Sub},
+    time::Duration,
+};
 
 #[derive(Debug, Default)]
 pub struct Animate<T> {

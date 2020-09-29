@@ -1,4 +1,4 @@
-use crate::{Real, ConvertTo, Paint, Color, Gradient};
+use crate::{Color, ConvertTo, Gradient, Paint, Real};
 
 /// Controls how the end of line is drawn.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -13,7 +13,7 @@ pub enum LineCap {
 pub enum LineJoin {
     Miter,
     Round,
-    Bevel
+    Bevel,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

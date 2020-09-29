@@ -1,6 +1,6 @@
 use std::{ops::Deref, time::Duration};
 
-use crate::{MouseDown, KeyboardEvent, Model, Prim, MouseScroll};
+use crate::{KeyboardEvent, Model, MouseDown, MouseScroll, Prim};
 
 pub struct On<'a, M: Model, E> {
     pub prim: &'a Prim<M>,
@@ -11,15 +11,15 @@ pub struct On<'a, M: Model, E> {
 pub struct EventName(&'static str);
 
 impl EventName {
-    pub const WINDOW_RESIZED: EventName = EventName("WindowResized");
     pub const DRAW: EventName = EventName("Draw");
-    pub const ON_MOUSE_DOWN: EventName = EventName("OnMouseDown");
-    pub const ON_MOUSE_SCROLL: EventName = EventName("OnMouseScroll");
-    pub const ON_KEY_DOWN: EventName = EventName("OnKeyDown");
-    pub const ON_KEY_UP: EventName = EventName("OnKeyUp");
+    pub const ON_BLUR: EventName = EventName("OnBlur");
     pub const ON_CLICK: EventName = EventName("OnClick");
     pub const ON_INPUT_CHAR: EventName = EventName("OnInputChar");
-    pub const ON_BLUR: EventName = EventName("OnBlur");
+    pub const ON_KEY_DOWN: EventName = EventName("OnKeyDown");
+    pub const ON_KEY_UP: EventName = EventName("OnKeyUp");
+    pub const ON_MOUSE_DOWN: EventName = EventName("OnMouseDown");
+    pub const ON_MOUSE_SCROLL: EventName = EventName("OnMouseScroll");
+    pub const WINDOW_RESIZED: EventName = EventName("WindowResized");
 }
 
 impl Deref for EventName {
@@ -30,17 +30,16 @@ impl Deref for EventName {
     }
 }
 
-
 pub enum Listener<M: Model> {
-    WindowResized(fn (u32, u32) -> M::Message),
-    Draw(fn (Duration) -> M::Message),
-    OnMouseDown(fn (On<M, MouseDown>) -> M::Message),
-    OnMouseScroll(fn (On<M, MouseScroll>) -> M::Message),
-    OnKeyDown(fn (On<M, KeyboardEvent>) -> M::Message),
-    OnKeyUp(fn (On<M, KeyboardEvent>) -> M::Message),
-    OnClick(fn (On<M, MouseDown>) -> M::Message),
-    OnInputChar(fn (On<M, char>) -> M::Message),
-    OnBlur(fn (On<M, MouseDown>) -> M::Message),
+    WindowResized(fn(u32, u32) -> M::Message),
+    Draw(fn(Duration) -> M::Message),
+    OnMouseDown(fn(On<M, MouseDown>) -> M::Message),
+    OnMouseScroll(fn(On<M, MouseScroll>) -> M::Message),
+    OnKeyDown(fn(On<M, KeyboardEvent>) -> M::Message),
+    OnKeyUp(fn(On<M, KeyboardEvent>) -> M::Message),
+    OnClick(fn(On<M, MouseDown>) -> M::Message),
+    OnInputChar(fn(On<M, char>) -> M::Message),
+    OnBlur(fn(On<M, MouseDown>) -> M::Message),
 }
 
 impl<M: Model> Listener<M> {
@@ -58,17 +57,3 @@ impl<M: Model> Listener<M> {
         }
     }
 }
-
-//pub struct OnClickListener<Msg>(fn (MousePress) -> Msg);
-//
-//impl<Msg> OnClickListener<Msg> {
-//    pub const EVENT_NAME: EventName = EventName("OnClick");
-//}
-//
-//impl<Msg> Deref for OnClickListener<Msg> {
-//    type Target = fn (MousePress) -> Msg;
-//
-//    fn deref(&self) -> &Self::Target {
-//        &self.0
-//    }
-//}

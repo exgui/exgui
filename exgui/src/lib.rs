@@ -1,11 +1,11 @@
-pub use exgui_core::*;
 pub use exgui_builder as builder;
+pub use exgui_core::*;
 
 #[cfg(test)]
 mod tests {
     use std::borrow::Cow;
 
-    use crate::{Rect, Text, Node, Model, ChangeView};
+    use crate::{ChangeView, Model, Node, Rect, Text};
     use exgui_core::Shaped;
 
     #[derive(Debug, PartialEq)]
@@ -37,22 +37,14 @@ mod tests {
 
             rect()
                 .children(vec![
-                    rect()
-                        .child(text("-"))
-                        .on_click(|_| Msg::Decrement)
-                        .build(),
-                    text(format!("{}", self.0))
-                        .id("counter")
-                        .build(),
-                    rect()
-                        .child(text("+"))
-                        .on_click(|_| Msg::Increment)
-                        .build(),
+                    rect().child(text("-")).on_click(|_| Msg::Decrement).build(),
+                    text(format!("{}", self.0)).id("counter").build(),
+                    rect().child(text("+")).on_click(|_| Msg::Increment).build(),
                 ])
                 .build()
         }
 
-        fn modify_view(&self, view: &mut Node<Self>) {
+        fn modify_view(&mut self, view: &mut Node<Self>) {
             view.get_prim_mut("counter")
                 .map(|prim| prim.set_text(format!("{}", self.0)));
         }
@@ -77,7 +69,10 @@ mod tests {
         let child = child.children[0].as_prim().unwrap();
         assert_eq!(child.name, Cow::Borrowed(Text::NAME));
         let shape = child.shape.text().unwrap();
-        assert_eq!(*shape, Text { content: "-".to_string(), ..Default::default() });
+        assert_eq!(*shape, Text {
+            content: "-".to_string(),
+            ..Default::default()
+        });
         assert_eq!(child.children.len(), 0);
 
         let child = root.children[1].as_prim().unwrap();
@@ -99,7 +94,10 @@ mod tests {
         let child = child.children[0].as_prim().unwrap();
         assert_eq!(child.name, Cow::Borrowed(Text::NAME));
         let shape = child.shape.text().unwrap();
-        assert_eq!(*shape, Text { content: "+".to_string(), ..Default::default() });
+        assert_eq!(*shape, Text {
+            content: "+".to_string(),
+            ..Default::default()
+        });
         assert_eq!(child.children.len(), 0);
     }
 }

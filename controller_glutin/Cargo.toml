@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 exgui_core = { path = "../core" }
-glutin = "0.22"
+glutin = "0.24"
 gl = "0.14"
 chrono = "0.4"

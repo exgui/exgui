@@ -1,4 +1,4 @@
-use crate::node::{Clip, Real, RealValue, ConvertTo, Fill, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, ConvertTo, Fill, Real, RealValue, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct GlyphPos {

@@ -1,4 +1,4 @@
-use crate::node::{Clip, Real, RealValue, Fill, Padding, Stroke, Transform, TransformMatrix};
+use crate::node::{Clip, Fill, Padding, Real, RealValue, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Circle {
@@ -30,7 +30,10 @@ impl Circle {
 
     #[inline]
     pub fn intersect(&self, x: Real, y: Real) -> bool {
-        let matrix = self.transform.global_matrix().unwrap_or_else(|| self.transform.matrix());
+        let matrix = self
+            .transform
+            .global_matrix()
+            .unwrap_or_else(|| self.transform.matrix());
         let (x, y) = if !matrix.is_identity() {
             matrix.inverse() * (x, y)
         } else {

@@ -1,4 +1,4 @@
-use crate::{Clip, Real, RealValue, Rounding, Fill, Padding, Stroke, Transform, TransformMatrix};
+use crate::{Clip, Fill, Padding, Real, RealValue, Rounding, Stroke, Transform, TransformMatrix};
 
 #[derive(Default, Debug, Clone, PartialEq)]
 pub struct Rect {
@@ -32,7 +32,10 @@ impl Rect {
 
     #[inline]
     pub fn intersect(&self, x: Real, y: Real) -> bool {
-        let matrix = self.transform.global_matrix().unwrap_or_else(|| self.transform.matrix());
+        let matrix = self
+            .transform
+            .global_matrix()
+            .unwrap_or_else(|| self.transform.matrix());
         let (x, y) = if !matrix.is_identity() {
             matrix.inverse() * (x, y)
         } else {

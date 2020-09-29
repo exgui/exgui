@@ -1,22 +1,14 @@
+pub use self::{clip::*, comp::*, converter::*, prim::*, shape::*, transform::*, value::*};
 use crate::{Model, SystemMessage};
-pub use self::{
-    comp::*,
-    clip::*,
-    prim::*,
-    shape::*,
-    value::*,
-    converter::*,
-    transform::*,
-};
 
 pub mod builder;
-pub mod comp;
 pub mod clip;
+pub mod comp;
+pub mod converter;
 pub mod prim;
 pub mod shape;
-pub mod value;
-pub mod converter;
 pub mod transform;
+pub mod value;
 
 pub enum Node<M: Model> {
     Prim(Prim<M>),
@@ -24,20 +16,6 @@ pub enum Node<M: Model> {
 }
 
 impl<M: Model> Node<M> {
-//    pub fn add_child(&mut self, child: Node<M>) {
-//        match self {
-//            Node::Prim(prim) => prim.children.push(child),
-//            Node::Comp(comp) => comp.
-//        }
-//    }
-//
-//    pub fn add_children(&mut self, children: impl IntoIterator<Item = Node<M>>) {
-//        match self {
-//            Node::Prim(prim) => prim.children.extend(children),
-//            Node::Comp(comp) => comp.
-//        }
-//    }
-
     pub fn get_id(&self) -> Option<&str> {
         match self {
             Node::Prim(prim) => prim.id(),
@@ -131,15 +109,17 @@ impl<M: Model> Node<M> {
     pub fn get_prim(&self, id: impl AsRef<str>) -> Option<&Prim<M>> {
         let id = id.as_ref();
         match self {
-            Node::Prim(prim) => if prim.id() == Some(id) {
-                Some(prim)
-            } else {
-                for child in &prim.children {
-                    if let Some(prim) = child.get_prim(id) {
-                        return Some(prim);
+            Node::Prim(prim) => {
+                if prim.id() == Some(id) {
+                    Some(prim)
+                } else {
+                    for child in &prim.children {
+                        if let Some(prim) = child.get_prim(id) {
+                            return Some(prim);
+                        }
                     }
+                    None
                 }
-                None
             },
             _ => None,
         }
@@ -148,15 +128,17 @@ impl<M: Model> Node<M> {
     pub fn get_prim_mut(&mut self, id: impl AsRef<str>) -> Option<&mut Prim<M>> {
         let id = id.as_ref();
         match self {
-            Node::Prim(prim) => if prim.id() == Some(id) {
-                Some(prim)
-            } else {
-                for child in &mut prim.children {
-                    if let Some(prim) = child.get_prim_mut(id) {
-                        return Some(prim);
+            Node::Prim(prim) => {
+                if prim.id() == Some(id) {
+                    Some(prim)
+                } else {
+                    for child in &mut prim.children {
+                        if let Some(prim) = child.get_prim_mut(id) {
+                            return Some(prim);
+                        }
                     }
+                    None
                 }
-                None
             },
             _ => None,
         }

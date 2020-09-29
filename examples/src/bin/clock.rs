@@ -1,15 +1,13 @@
-use std::f32::consts::PI;
-use std::env;
+use std::{env, f32::consts::PI};
 
-use chrono::{Datelike, DateTime, Local, Timelike};
+use chrono::{DateTime, Datelike, Local, Timelike};
 
-use exgui_render_nanovg::NanovgRender;
-use exgui_controller_glutin::{App, glutin};
 use exgui::{
-    AlignHor::*,
-    AlignVer::*, builder::*, ChangeView, Color, Comp, Gradient, Model, Node,
-    PathCommand::*, SystemMessage, Real,
+    builder::*, AlignHor::*, AlignVer::*, ChangeView, Color, Comp, Gradient, Model, Node, PathCommand::*, Real,
+    SystemMessage,
 };
+use exgui_controller_glutin::{glutin, App};
+use exgui_render_nanovg::NanovgRender;
 
 const INIT_WINDOW_SIZE: (u32, u32) = (480, 480);
 const TWO_PI: Real = 2.0 * PI;
@@ -62,9 +60,7 @@ impl Model for Clock {
 
     fn update(&mut self, msg: Self::Message) -> ChangeView {
         match msg {
-            Msg::ResizeWindow((w, h)) => {
-                self.size_recalc(w, h)
-            },
+            Msg::ResizeWindow((w, h)) => self.size_recalc(w, h),
             Msg::Tick => {
                 let dt: DateTime<Local> = Local::now(); // e.g. `2018-11-28T21:45:59.324310806+09:00`
 
@@ -77,7 +73,6 @@ impl Model for Clock {
                     self.am = hour < 12;
                     self.hour = f64::from(hour % 12) as f32;
                     self.minute = f64::from(dt.minute()) as f32;
-
 
                     self.year = dt.year();
                     self.month = dt.month();
@@ -122,7 +117,7 @@ impl Model for Clock {
             theta: self.hour_angle,
         };
 
-        let silver = Color::RGB(196.0 / 255.0,199.0 / 255.0,206.0 / 255.0);
+        let silver = Color::RGB(196.0 / 255.0, 199.0 / 255.0, 206.0 / 255.0);
         let darksilver = Color::RGB(148.0 / 255.0, 152.0 / 255.0, 161.0 / 255.0);
         let darkgray = Color::RGB(169.0 / 255.0, 169.0 / 255.0, 169.0 / 255.0);
         let boss_rad = 6.0;
@@ -159,19 +154,13 @@ impl Model for Clock {
             .build();
         set.push(date);
 
-        let second_hand = comp(Hand::create(second_hand_props))
-            .id("second hand")
-            .build();
+        let second_hand = comp(Hand::create(second_hand_props)).id("second hand").build();
         set.push(second_hand);
 
-        let minute_hand = comp(Hand::create(minute_hand_props))
-            .id("minute hand")
-            .build();
+        let minute_hand = comp(Hand::create(minute_hand_props)).id("minute hand").build();
         set.push(minute_hand);
 
-        let hour_hand = comp(Hand::create(hour_hand_props))
-            .id("hour hand")
-            .build();
+        let hour_hand = comp(Hand::create(hour_hand_props)).id("hour hand").build();
         set.push(hour_hand);
 
         let boss = circle()
@@ -197,34 +186,29 @@ impl Model for Clock {
     fn modify_view(&mut self, view: &mut Node<Self>) {
         if self.day_changed {
             view.get_prim_mut("date")
-                .map(|prim| prim.set_text(format!(
-                    "{:4}-{:02}-{:02}", self.year, self.month, self.day
-                )));
+                .map(|prim| prim.set_text(format!("{:4}-{:02}-{:02}", self.year, self.month, self.day)));
         }
 
-        view.get_comp_mut("second hand")
-            .map(|hand| {
-                let hand_theta = hand.model::<Hand>().theta;
-                if (hand_theta - self.second_angle).abs() > 0.00001 {
-                    hand.send::<Hand>(HandMsg::ChangeTheta(self.second_angle));
-                }
-            });
+        view.get_comp_mut("second hand").map(|hand| {
+            let hand_theta = hand.model::<Hand>().theta;
+            if (hand_theta - self.second_angle).abs() > 0.00001 {
+                hand.send::<Hand>(HandMsg::ChangeTheta(self.second_angle));
+            }
+        });
 
-        view.get_comp_mut("minute hand")
-            .map(|hand| {
-                let hand_theta = hand.model::<Hand>().theta;
-                if (hand_theta - self.minute_angle).abs() > 0.00001 {
-                    hand.send::<Hand>(HandMsg::ChangeTheta(self.minute_angle));
-                }
-            });
+        view.get_comp_mut("minute hand").map(|hand| {
+            let hand_theta = hand.model::<Hand>().theta;
+            if (hand_theta - self.minute_angle).abs() > 0.00001 {
+                hand.send::<Hand>(HandMsg::ChangeTheta(self.minute_angle));
+            }
+        });
 
-        view.get_comp_mut("hour hand")
-            .map(|hand| {
-                let hand_theta = hand.model::<Hand>().theta;
-                if (hand_theta - self.hour_angle).abs() > 0.00001 {
-                    hand.send::<Hand>(HandMsg::ChangeTheta(self.hour_angle));
-                }
-            });
+        view.get_comp_mut("hour hand").map(|hand| {
+            let hand_theta = hand.model::<Hand>().theta;
+            if (hand_theta - self.hour_angle).abs() > 0.00001 {
+                hand.send::<Hand>(HandMsg::ChangeTheta(self.hour_angle));
+            }
+        });
     }
 }
 
@@ -245,8 +229,8 @@ impl Clock {
     fn build_num(&self, n: i32, len: Real, font_size: Real) -> Node<Clock> {
         let radians_per_hour = TWO_PI / 12.0;
         let x = len * (n as Real * radians_per_hour).sin();
-        let y = - len * (n as Real * radians_per_hour).cos();
-        let silver = Color::RGB(196.0 / 255.0,199.0 / 255.0,206.0 / 255.0);
+        let y = -len * (n as Real * radians_per_hour).cos();
+        let silver = Color::RGB(196.0 / 255.0, 199.0 / 255.0, 206.0 / 255.0);
 
         text(format!("{}", n))
             .pos(x, y)
@@ -261,11 +245,15 @@ impl Clock {
         let radians_per_sec = TWO_PI / 60.0;
         let ticks_radius = self.dial_radius * 0.925;
 
-        path(vec![Move([0.0, -ticks_radius]), Line([0.0, -ticks_radius - len]), Close])
-            .fill(Color::White)
-            .stroke((Color::White, width))
-            .transform(rotate(m * radians_per_sec))
-            .build()
+        path(vec![
+            Move([0.0, -ticks_radius]),
+            Line([0.0, -ticks_radius - len]),
+            Close,
+        ])
+        .fill(Color::White)
+        .stroke((Color::White, width))
+        .transform(rotate(m * radians_per_sec))
+        .build()
     }
 }
 
@@ -302,7 +290,7 @@ impl Model for Hand {
             HandMsg::ChangeTheta(theta) => {
                 self.theta = theta;
                 ChangeView::Modify
-            }
+            },
         }
     }
 
@@ -328,11 +316,16 @@ fn main() {
             .with_vsync(true)
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default()
-    ).unwrap();
+        NanovgRender::default(),
+    )
+    .unwrap();
     app.init().unwrap();
 
-    let font_path = env::current_dir().unwrap().join("examples").join("resources").join("Roboto-Regular.ttf");
+    let font_path = env::current_dir()
+        .unwrap()
+        .join("examples")
+        .join("resources")
+        .join("Roboto-Regular.ttf");
     app.renderer_mut().load_font("Roboto", font_path).unwrap();
 
     let comp = Comp::new(Clock::create(()));
