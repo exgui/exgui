@@ -10,3 +10,4 @@ chrono = "0.4"
 exgui = { path = "../exgui" }
 exgui_controller_glutin = { path = "../controller_glutin" }
 exgui_render_nanovg = { path = "../render_nanovg" }
+exgui_render_pathfinder = { path = "../render_pathfinder" }

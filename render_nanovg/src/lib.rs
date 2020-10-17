@@ -128,7 +128,7 @@ pub struct NanovgRender {
 impl Render for NanovgRender {
     type Error = NanovgRenderError;
 
-    fn init(&mut self) -> Result<(), Self::Error> {
+    fn init(&mut self, _background_color: Color) -> Result<(), Self::Error> {
         if self.context.is_none() {
             let context = ContextBuilder::new()
                 .stencil_strokes()
@@ -139,32 +139,37 @@ impl Render for NanovgRender {
         Ok(())
     }
 
-    fn set_dimensions(&mut self, width: u32, height: u32, device_pixel_ratio: f64) {
-        self.width = width as f32;
-        self.height = height as f32;
+    fn set_dimensions(&mut self, physical_width: u32, physical_height: u32, device_pixel_ratio: f64) {
+        self.width = physical_width as f32;
+        self.height = physical_height as f32;
         self.device_pixel_ratio = device_pixel_ratio as f32;
     }
 
-    fn render(&self, node: &mut dyn CompositeShape) -> Result<(), Self::Error> {
-        self.context.as_ref().ok_or(NanovgRenderError::ContextIsNotInit)?.frame(
-            (self.width, self.height),
-            self.device_pixel_ratio,
-            move |frame| {
-                let bound = BoundingBox {
-                    min_x: 0.0,
-                    min_y: 0.0,
-                    max_x: self.width as Real,
-                    max_y: self.height as Real,
-                };
+    fn render(&mut self, node: &mut dyn CompositeShape) -> Result<(), Self::Error> {
+        let shared_self = &*self;
+        shared_self
+            .context
+            .as_ref()
+            .ok_or(NanovgRenderError::ContextIsNotInit)?
+            .frame(
+                (shared_self.width, shared_self.height),
+                shared_self.device_pixel_ratio,
+                move |frame| {
+                    let bound = BoundingBox {
+                        min_x: 0.0,
+                        min_y: 0.0,
+                        max_x: shared_self.width as Real,
+                        max_y: shared_self.height as Real,
+                    };
 
-                if node.need_recalc().unwrap_or(true) {
+                    if node.need_recalc().unwrap_or(true) {
+                        let mut defaults = ShapeDefaults::default();
+                        Self::recalc_composite(&frame, node, bound, TransformMatrix::identity(), &mut defaults);
+                    }
                     let mut defaults = ShapeDefaults::default();
-                    Self::recalc_composite(&frame, node, bound, TransformMatrix::identity(), &mut defaults);
-                }
-                let mut defaults = ShapeDefaults::default();
-                Self::render_composite(&frame, node, None, &mut defaults);
-            },
-        );
+                    Self::render_composite(&frame, node, None, &mut defaults);
+                },
+            );
         Ok(())
     }
 }
@@ -259,7 +264,7 @@ impl NanovgRender {
                         max_x: rect.x.val() + rect.width.val(),
                         max_y: rect.y.val() + rect.height.val(),
                     };
-                },
+                }
                 Shape::Circle(circle) => {
                     if circle.cx.set_by_pct(parent_bound.width()) {
                         circle.cx.0 += parent_bound.min_x;
@@ -283,7 +288,7 @@ impl NanovgRender {
                         max_x: cx + r,
                         max_y: cy + r,
                     };
-                },
+                }
                 Shape::Text(text) => {
                     if text.x.set_by_pct(parent_bound.width()) {
                         text.x.0 += parent_bound.min_x;
@@ -308,23 +313,26 @@ impl NanovgRender {
 
                     text.glyph_positions = frame
                         .text_glyph_positions((text.x.val() as f32, text.y.val() as f32), &text.content)
-                        .map(|pos| GlyphPos {
-                            x: pos.x as Real,
-                            min_x: pos.min_x as Real,
-                            max_x: pos.max_x as Real,
+                        .map(|pos| {
+                            let x = pos.x.min(pos.min_x);
+                            GlyphPos {
+                                x,
+                                y: 0.0,
+                                width: pos.max_x - x,
+                            }
                         })
                         .collect();
                     bound = BoundingBox {
                         min_x: text.x.val(),
                         min_y: text.y.val(),
-                        max_x: text.x.val() + text.glyph_positions.last().map(|pos| pos.max_x).unwrap_or(0.0),
+                        max_x: text.x.val() + text.glyph_positions.last().map(|pos| pos.max_x()).unwrap_or(0.0),
                         max_y: text.y.val() + metrics.line_height as Real,
                     };
-                },
+                }
                 Shape::Path(path) => {
                     Self::set_by_pct_clip(&mut path.clip, &parent_bound);
                     parent_global_transform = path.recalculate_transform(parent_global_transform);
-                },
+                }
                 Shape::Group(group) => {
                     Self::set_by_pct_clip(&mut group.clip, &parent_bound);
                     parent_global_transform = group.recalculate_transform(parent_global_transform);
@@ -341,7 +349,7 @@ impl NanovgRender {
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
                     }
-                },
+                }
             }
         }
 
@@ -363,7 +371,7 @@ impl NanovgRender {
                         max_x: rect.x.val() + rect.width.val(),
                         max_y: rect.y.val() + rect.height.val(),
                     };
-                },
+                }
                 Shape::Circle(circle) => {
                     circle.cx.set_by_auto(inner_bound.min_x + inner_bound.width() / 2.0);
                     circle.cy.set_by_auto(inner_bound.min_y + inner_bound.height() / 2.0);
@@ -380,7 +388,7 @@ impl NanovgRender {
                         max_x: cx + r,
                         max_y: cy + r,
                     };
-                },
+                }
                 Shape::Text(text) => {
                     let transform = text.transform.matrix();
                     let inner_bound_points = transform * inner_bound;
@@ -396,7 +404,7 @@ impl NanovgRender {
                         bound.min_y = bound.min_y.min(bound_points[idx].1).min(inner_bound_points[idx].1);
                         bound.max_y = bound.max_y.max(bound_points[idx].1).max(inner_bound_points[idx].1);
                     }
-                },
+                }
                 _ => (),
             }
         }
@@ -471,7 +479,7 @@ impl NanovgRender {
                         },
                         Self::path_options(rect.transparency, rect.clip, &rect.transform, defaults),
                     );
-                },
+                }
                 Shape::Circle(circle) => {
                     frame.path(
                         |path| {
@@ -485,7 +493,7 @@ impl NanovgRender {
                         },
                         Self::path_options(circle.transparency, circle.clip, &circle.transform, defaults),
                     );
-                },
+                }
                 Shape::Path(path) => {
                     frame.path(
                         |nvg_path| {
@@ -499,56 +507,56 @@ impl NanovgRender {
                                     Move(ref xy) => {
                                         last_xy = *xy;
                                         nvg_path.move_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     MoveRel(ref xy) => {
                                         last_xy = [last_xy[0] + xy[0], last_xy[1] + xy[1]];
                                         nvg_path.move_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     Line(ref xy) => {
                                         last_xy = *xy;
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     LineRel(ref xy) => {
                                         last_xy = [last_xy[0] + xy[0], last_xy[1] + xy[1]];
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     LineAlonX(ref x) => {
                                         last_xy[0] = *x;
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     LineAlonXRel(ref x) => {
                                         last_xy[0] += *x;
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     LineAlonY(ref y) => {
                                         last_xy[1] = *y;
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     LineAlonYRel(ref y) => {
                                         last_xy[1] += *y;
                                         nvg_path.line_to((last_xy[0] as f32, last_xy[1] as f32));
-                                    },
+                                    }
                                     Close => nvg_path.close(),
                                     BezCtrl(ref xy) => {
                                         bez_ctrls = [bez_ctrls[1], (xy[0], xy[1])];
-                                    },
+                                    }
                                     BezCtrlRel(ref xy) => {
                                         bez_ctrls = [bez_ctrls[1], (last_xy[0] + xy[0], last_xy[1] + xy[1])];
-                                    },
+                                    }
                                     QuadBezTo(ref xy) => {
                                         last_xy = *xy;
                                         nvg_path.quad_bezier_to(
                                             (last_xy[0] as f32, last_xy[1] as f32),
                                             (bez_ctrls[1].0 as f32, bez_ctrls[1].1 as f32),
                                         );
-                                    },
+                                    }
                                     QuadBezToRel(ref xy) => {
                                         last_xy = [last_xy[0] + xy[0], last_xy[1] + xy[1]];
                                         nvg_path.quad_bezier_to(
                                             (last_xy[0] as f32, last_xy[1] as f32),
                                             (bez_ctrls[1].0 as f32, bez_ctrls[1].1 as f32),
                                         );
-                                    },
+                                    }
                                     CubBezTo(ref xy) => {
                                         last_xy = *xy;
                                         nvg_path.cubic_bezier_to(
@@ -556,7 +564,7 @@ impl NanovgRender {
                                             (bez_ctrls[0].0 as f32, bez_ctrls[0].1 as f32),
                                             (bez_ctrls[1].0 as f32, bez_ctrls[1].1 as f32),
                                         );
-                                    },
+                                    }
                                     CubBezToRel(ref xy) => {
                                         last_xy = [last_xy[0] + xy[0], last_xy[1] + xy[1]];
                                         nvg_path.cubic_bezier_to(
@@ -564,7 +572,7 @@ impl NanovgRender {
                                             (bez_ctrls[0].0 as f32, bez_ctrls[0].1 as f32),
                                             (bez_ctrls[1].0 as f32, bez_ctrls[1].1 as f32),
                                         );
-                                    },
+                                    }
                                     _ => panic!("Not impl rendering cmd {:?}", cmd), // TODO: need refl impl
                                 }
                             }
@@ -577,7 +585,7 @@ impl NanovgRender {
                         },
                         Self::path_options(path.transparency, path.clip, &path.transform, defaults),
                     );
-                },
+                }
                 Shape::Text(this_text) => {
                     text = Some(this_text);
 
@@ -591,7 +599,7 @@ impl NanovgRender {
                         &this_text.content,
                         text_options,
                     );
-                },
+                }
                 Shape::Group(group) => {
                     if let Some(transparency) = group.transparency {
                         defaults.transparency = transparency;
@@ -605,7 +613,7 @@ impl NanovgRender {
                     if !group.clip.is_none() {
                         defaults.clip = group.clip;
                     }
-                },
+                }
             }
         }
         if let Some(children) = composite.children() {

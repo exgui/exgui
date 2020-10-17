@@ -7,7 +7,8 @@ use exgui::{
     SystemMessage,
 };
 use exgui_controller_glutin::{glutin, App};
-use exgui_render_nanovg::NanovgRender;
+// use exgui_render_nanovg::NanovgRender as Render;
+use exgui_render_pathfinder::PathfinderRender as Render;
 
 const INIT_WINDOW_SIZE: (u32, u32) = (480, 480);
 const TWO_PI: Real = 2.0 * PI;
@@ -95,7 +96,7 @@ impl Model for Clock {
                 } else {
                     ChangeView::None
                 }
-            },
+            }
         }
     }
 
@@ -147,7 +148,7 @@ impl Model for Clock {
         let date = text(format!("{:4}-{:02}-{:02}", self.year, self.month, self.day))
             .id("date")
             .pos(0, self.dial_radius * 0.7)
-            .font_name("Roboto")
+            .font_name("Roboto-Regular")
             .font_size(24)
             .align((Center, Baseline))
             .fill(silver)
@@ -234,7 +235,7 @@ impl Clock {
 
         text(format!("{}", n))
             .pos(x, y)
-            .font_name("Roboto")
+            .font_name("Roboto-Regular")
             .font_size(font_size)
             .align((Center, Middle))
             .fill(silver)
@@ -290,7 +291,7 @@ impl Model for Hand {
             HandMsg::ChangeTheta(theta) => {
                 self.theta = theta;
                 ChangeView::Modify
-            },
+            }
         }
     }
 
@@ -316,7 +317,7 @@ fn main() {
             .with_vsync(true)
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default(),
+        Render::default(),
     )
     .unwrap();
     app.init().unwrap();
@@ -326,7 +327,7 @@ fn main() {
         .join("examples")
         .join("resources")
         .join("Roboto-Regular.ttf");
-    app.renderer_mut().load_font("Roboto", font_path).unwrap();
+    app.renderer_mut().load_font("Roboto-Regular", font_path).unwrap();
 
     let comp = Comp::new(Clock::create(()));
     app.run(comp);

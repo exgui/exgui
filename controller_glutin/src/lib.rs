@@ -114,7 +114,13 @@ impl<R: Render + 'static> App<R> {
             let color = self.background_color.as_arr();
             gl::ClearColor(color[0], color[1], color[2], color[3]);
         }
-        self.renderer.init().map_err(|err| AppError::RendererError(err))?;
+
+        let size = context.window().inner_size();
+        self.renderer
+            .set_dimensions(size.width, size.height, context.window().scale_factor());
+        self.renderer
+            .init(self.background_color)
+            .map_err(|err| AppError::RendererError(err))?;
         Ok(self)
     }
 
@@ -151,14 +157,14 @@ impl<R: Render + 'static> App<R> {
                             width: size.width,
                             height: size.height,
                         });
-                    },
+                    }
                     WindowEvent::CloseRequested => {
                         *control_flow = ControlFlow::Exit;
                         return;
-                    },
+                    }
                     WindowEvent::ReceivedCharacter(ch) => {
                         keyboard_controller.input_char(&mut comp, ch);
-                    },
+                    }
                     WindowEvent::KeyboardInput {
                         input:
                             KeyboardInput {
@@ -169,7 +175,7 @@ impl<R: Render + 'static> App<R> {
                     } if exit_by_escape => {
                         *control_flow = ControlFlow::Exit;
                         return;
-                    },
+                    }
                     WindowEvent::KeyboardInput { input, .. } => {
                         let KeyboardInput {
                             scancode,
@@ -184,28 +190,28 @@ impl<R: Render + 'static> App<R> {
                             keyboard_controller
                                 .released_comp(&mut comp, convert_keyboard_event(scancode, virtual_keycode));
                         }
-                    },
+                    }
                     WindowEvent::CursorMoved { position, .. } => {
                         mouse_controller.update_pos(position.x as Real, position.y as Real);
-                    },
+                    }
                     WindowEvent::MouseInput {
                         state: ElementState::Pressed,
                         button,
                         ..
                     } => {
                         mouse_controller.pressed_comp(&mut comp, convert_mouse_button(button));
-                    },
+                    }
                     WindowEvent::MouseWheel {
                         delta: MouseScrollDelta::LineDelta(x, y),
                         ..
                     } => {
                         mouse_controller.mouse_scroll(&mut comp, (x, y));
-                    },
+                    }
                     _ => (),
                 },
                 Event::MainEventsCleared => {
                     context.window().request_redraw();
-                },
+                }
                 Event::RedrawRequested(_) => {
                     let size = context.window().inner_size();
                     unsafe {
@@ -229,7 +235,7 @@ impl<R: Render + 'static> App<R> {
                     } else {
                         thread::sleep(Duration::from_millis(10));
                     }
-                },
+                }
                 _ => (),
             }
         })

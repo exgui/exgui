@@ -3,8 +3,15 @@ use crate::node::{Clip, ConvertTo, Fill, Real, RealValue, Stroke, Transform, Tra
 #[derive(Default, Debug, Clone, Copy, PartialEq)]
 pub struct GlyphPos {
     pub x: Real,
-    pub max_x: Real,
-    pub min_x: Real,
+    pub y: Real,
+    pub width: Real,
+}
+
+impl GlyphPos {
+    #[inline]
+    pub fn max_x(&self) -> Real {
+        self.x + self.width
+    }
 }
 
 #[derive(Default, Debug, Clone, Copy, PartialEq)]

@@ -1,6 +1,7 @@
 use exgui::{builder::*, ChangeView, Color, Comp, LineJoin, Model, Node, PathCommand::*, Stroke};
 use exgui_controller_glutin::{glutin, App};
-use exgui_render_nanovg::NanovgRender;
+use exgui_render_nanovg::NanovgRender as Render;
+// use exgui_render_pathfinder::PathfinderRender as Render;
 
 struct Smile {
     normal_face: bool,
@@ -25,7 +26,7 @@ impl Model for Smile {
             Msg::ToggleFace => {
                 self.normal_face = !self.normal_face;
                 ChangeView::Rebuild
-            },
+            }
             Msg::Nope => ChangeView::None,
         }
     }
@@ -105,7 +106,7 @@ fn main() {
             .with_vsync(true)
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default(),
+        Render::default(),
     )
     .unwrap();
     app.init().unwrap();

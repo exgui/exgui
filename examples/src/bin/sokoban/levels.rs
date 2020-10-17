@@ -103,14 +103,6 @@ impl Level {
         self.number
     }
 
-    pub fn field(&self) -> &[Vec<u8>] {
-        &self.current
-    }
-
-    pub fn field_mut(&mut self) -> &mut [Vec<u8>] {
-        &mut self.current
-    }
-
     pub fn cols(&self) -> usize {
         self.current.iter().map(|line| line.len()).max().unwrap_or(0)
     }

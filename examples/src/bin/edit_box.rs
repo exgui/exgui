@@ -72,7 +72,7 @@ impl Caret {
             _ => {
                 self.reset_blink();
                 self.show = true;
-            },
+            }
         }
     }
 }
@@ -124,32 +124,32 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
-            },
+            }
             Msg::OnKeyDown(keycode) if self.focus => match keycode {
                 VirtualKeyCode::Left => {
                     self.caret.update_action(CaretAction::MoveLeft);
                     ChangeView::Modify
-                },
+                }
                 VirtualKeyCode::Right => {
                     self.caret.update_action(CaretAction::MoveRight);
                     ChangeView::Modify
-                },
+                }
                 VirtualKeyCode::Home => {
                     self.caret.update_action(CaretAction::MoveStart);
                     ChangeView::Modify
-                },
+                }
                 VirtualKeyCode::End => {
                     self.caret.update_action(CaretAction::MoveEnd);
                     ChangeView::Modify
-                },
+                }
                 VirtualKeyCode::Delete if self.editable => {
                     self.caret.update_action(CaretAction::Delete);
                     ChangeView::Modify
-                },
+                }
                 VirtualKeyCode::Backspace if self.editable => {
                     self.caret.update_action(CaretAction::Backspace);
                     ChangeView::Modify
-                },
+                }
                 _ => ChangeView::None,
             },
             Msg::Input(ch) if self.editable => {
@@ -159,7 +159,7 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
-            },
+            }
             Msg::Draw(elapsed) if self.focus => {
                 self.caret.blink += elapsed;
                 if let CaretAction::Redraw = self.caret.action {
@@ -170,13 +170,13 @@ impl Model for EditBox {
                 } else {
                     ChangeView::None
                 }
-            },
+            }
             Msg::OnBlur if self.focus => {
                 self.focus = false;
                 self.caret.reset();
                 self.caret.action = CaretAction::Blink;
                 ChangeView::Modify
-            },
+            }
             _ => ChangeView::None,
         }
     }
@@ -233,11 +233,11 @@ impl Model for EditBox {
                 if let Some(idx) = text
                     .glyph_positions
                     .iter()
-                    .position(|pos| focus_pos >= pos.min_x && focus_pos <= pos.max_x)
+                    .position(|pos| focus_pos >= pos.x && focus_pos <= pos.max_x())
                 {
                     let pos = text.glyph_positions[idx];
-                    let before = focus_pos - pos.min_x;
-                    let after = pos.max_x - focus_pos;
+                    let before = focus_pos - pos.x;
+                    let after = pos.max_x() - focus_pos;
                     if before < after {
                         self.caret.idx = idx;
                     } else {
@@ -245,16 +245,16 @@ impl Model for EditBox {
                     }
                 }
                 if let Some(last) = text.glyph_positions.last() {
-                    if focus_pos > last.max_x {
+                    if focus_pos > last.max_x() {
                         self.caret.idx = text.glyph_positions.len();
                     }
                 }
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::MoveLeft => {
                 self.caret.idx = self.caret.idx.checked_sub(1).unwrap_or(0);
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::MoveRight => {
                 self.caret.idx = self.caret.idx
                     + if text.glyph_positions.len() > self.caret.idx {
@@ -263,15 +263,15 @@ impl Model for EditBox {
                         0
                     };
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::MoveStart => {
                 self.caret.idx = 0;
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::MoveEnd => {
                 self.caret.idx = text.glyph_positions.len();
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::Input(ch) => {
                 if self.caret.idx < text.glyph_positions.len() {
                     text.insert(self.caret.idx, ch);
@@ -280,35 +280,35 @@ impl Model for EditBox {
                 }
                 self.caret.idx += 1;
                 self.caret.update_action(CaretAction::Redraw);
-            },
+            }
             CaretAction::Delete => {
                 if self.caret.idx < text.glyph_positions.len() {
                     text.remove(self.caret.idx);
                     self.caret.update_action(CaretAction::Redraw);
                 }
-            },
+            }
             CaretAction::Backspace => {
                 if self.caret.idx > 0 {
                     self.caret.idx -= 1;
                     text.remove(self.caret.idx);
                     self.caret.update_action(CaretAction::Redraw);
                 }
-            },
+            }
             CaretAction::Redraw => {
                 let caret_pos = if self.caret.idx > 0 {
-                    text.glyph_positions[self.caret.idx - 1].max_x
+                    text.glyph_positions[self.caret.idx - 1].max_x()
                 } else {
                     0.0
                 };
-                let text_end_pos = text.glyph_positions.last().map(|pos| pos.max_x).unwrap_or(0.0);
+                let text_end_pos = text.glyph_positions.last().map(|pos| pos.max_x()).unwrap_or(0.0);
                 let line_height = text.metrics.map(|m| m.line_height).unwrap_or(text.font_size.0);
                 Self::draw_caret(view, caret_pos, text_end_pos, line_height, self.caret.show);
-            },
+            }
             CaretAction::Blink => {
                 if let Some(path) = view.get_prim_mut("caret").and_then(|caret| caret.shape.path_mut()) {
                     path.transparency = if self.caret.show { 0.0 } else { 1.0 };
                 }
-            },
+            }
             CaretAction::None => (),
         }
     }

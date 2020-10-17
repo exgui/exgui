@@ -1,11 +1,12 @@
 use std::{env, time::Duration};
 
 use exgui::{
-    builder::*, ChangeView, Color, Comp, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped, Stroke,
+    builder::*, ChangeView, Color, Comp, LineCap, LineJoin, Model, Node, PathCommand::*, Pct, Real, Shaped, Stroke,
     SystemMessage, Transform, VirtualKeyCode,
 };
 use exgui_controller_glutin::{glutin, App};
-use exgui_render_nanovg::NanovgRender;
+// use exgui_render_nanovg::NanovgRender as Render;
+use exgui_render_pathfinder::PathfinderRender as Render;
 
 use self::{
     animate::Animate,
@@ -35,7 +36,7 @@ impl Canvas {
             width: Self::WIDTH,
             height: Self::HEIGHT,
             cell_size: Self::calc_cell_size(Self::WIDTH, Self::HEIGHT),
-            scale_factor: Animate::new(0.0, 1.0, 0.002),
+            scale_factor: Animate::new(0.01, 1.0, 0.002),
         }
     }
 
@@ -255,7 +256,7 @@ impl Model for Game {
                 self.canvas.resize(width, height);
                 self.reset_docker();
                 ChangeView::Rebuild
-            },
+            }
             Msg::Draw(elapsed) => {
                 if self.is_transient() {
                     self.animate(elapsed);
@@ -266,21 +267,21 @@ impl Model for Game {
                         GameState::NextLevel => {
                             self.next_level();
                             ChangeView::Rebuild
-                        },
+                        }
                         _ => ChangeView::None,
                     }
                 }
-            },
+            }
             Msg::Scroll(delta) => {
                 self.canvas
                     .scale_factor
-                    .set((self.canvas.scale_factor.val() + delta * 0.1).max(0.0));
+                    .set((self.canvas.scale_factor.val() + delta * 0.1).max(0.01));
                 ChangeView::Rebuild
-            },
+            }
             Msg::KeyDown(VirtualKeyCode::Backspace) => {
                 self.reset_level();
                 ChangeView::Rebuild
-            },
+            }
             Msg::KeyDown(code) => {
                 match code {
                     VirtualKeyCode::Left if !self.docker.is_transient() => self.move_docker(Direction::Left),
@@ -289,11 +290,11 @@ impl Model for Game {
                     VirtualKeyCode::Down if !self.docker.is_transient() => self.move_docker(Direction::Down),
                     VirtualKeyCode::Enter if self.state == GameState::LevelComplete => {
                         self.state = GameState::NextLevel
-                    },
+                    }
                     _ => (),
                 };
                 ChangeView::None
-            },
+            }
             _ => ChangeView::None,
         }
     }
@@ -314,12 +315,12 @@ impl Model for Game {
                     Cell::BoxOnPlace => {
                         cells.push(self.build_place(x, y));
                         boxes.push(self.build_box(row, col, x, y));
-                    },
+                    }
                     Cell::Docker => docker = Some(self.build_docker(x, y)),
                     Cell::DockerOnPlace => {
                         cells.push(self.build_place(x, y));
                         docker = Some(self.build_docker(x, y));
-                    },
+                    }
                     Cell::Place => cells.push(self.build_place(x, y)),
                     _ => (),
                 }
@@ -343,22 +344,22 @@ impl Model for Game {
                     .transform(self.field_transform())
                     .children(cells)
                     .child(
-                        rect()
-                            .id("info")
-                            .fill(Color::RGBA(0.0, 0.3, 0.0, 0.7))
-                            .stroke((Color::RGB(0.0, 0.3, 0.0), 1))
-                            .transparency(1.0)
-                            .padding(10)
-                            .transform(translate(
-                                self.canvas.width / 2.0 - 83.0,
-                                self.canvas.height / 2.0 - 22.0,
-                            ))
-                            .child(
-                                text(format!("Level {} completed", self.level.number()))
-                                    .font_name("Roboto")
-                                    .font_size(24)
-                                    .fill(Color::White),
-                            ),
+                        group().id("info").transparency(1.0).child(
+                            rect()
+                                .fill(Color::RGBA(0.0, 0.3, 0.0, 0.7))
+                                .stroke((Color::RGB(0.0, 0.3, 0.0), 1))
+                                .padding(10)
+                                .transform(translate(
+                                    self.canvas.width / 2.0 - 108.0,
+                                    self.canvas.height / 2.0 - 25.0,
+                                ))
+                                .child(
+                                    text(format!("Level {} completed", self.level.number()))
+                                        .font_name("Roboto-Regular")
+                                        .font_size(24)
+                                        .fill(Color::White),
+                                ),
+                        ),
                     )
                     .on_key_down(|case| {
                         if let Some(code) = case.event.keycode {
@@ -388,8 +389,8 @@ impl Model for Game {
             }
         }
         if let GameState::LevelComplete = self.state {
-            if let Some(info) = view.get_prim_mut("info").and_then(|info| info.shape.rect_mut()) {
-                info.transparency = 0.0;
+            if let Some(info) = view.get_prim_mut("info").and_then(|info| info.shape.group_mut()) {
+                info.transparency = None;
             }
         }
     }
@@ -402,6 +403,7 @@ impl Game {
         let brick_height = self.canvas.cell_size / 2.0 - brick_space;
         let brick_chunk_size = (self.canvas.cell_size - brick_space) / 3.0;
         let round_radius = brick_space / 1.5;
+        let epsilon = self.canvas.cell_size / 100.0;
 
         rect()
             .id("wall")
@@ -411,40 +413,40 @@ impl Game {
             .transform(translate(x, y))
             .child(
                 rect()
-                    .width(brick_chunk_size)
+                    .width(brick_chunk_size + epsilon)
                     .height(brick_height)
                     .fill(brick_color)
                     .rounding_top_right(round_radius)
                     .rounding_bottom_right(round_radius)
-                    .transform(translate(0.0, brick_space / 2.0)),
+                    .transform(translate(-epsilon, brick_space / 2.0)),
             )
             .child(
                 rect()
-                    .width(brick_chunk_size * 2.0)
+                    .width(brick_chunk_size * 2.0 + epsilon)
                     .height(brick_height)
                     .fill(brick_color)
                     .rounding_top_left(round_radius)
                     .rounding_bottom_left(round_radius)
-                    .transform(translate(brick_chunk_size + brick_space, brick_space / 2.0)),
+                    .transform(translate(brick_chunk_size + epsilon + brick_space, brick_space / 2.0)),
             )
             .child(
                 rect()
-                    .width(brick_chunk_size * 2.0)
+                    .width(brick_chunk_size * 2.0 + epsilon)
                     .height(brick_height)
                     .fill(brick_color)
                     .rounding_top_right(round_radius)
                     .rounding_bottom_right(round_radius)
-                    .transform(translate(0.0, brick_height + brick_space * 1.5)),
+                    .transform(translate(-epsilon, brick_height + brick_space * 1.5)),
             )
             .child(
                 rect()
-                    .width(brick_chunk_size)
+                    .width(brick_chunk_size + epsilon)
                     .height(brick_height)
                     .fill(brick_color)
                     .rounding_top_left(round_radius)
                     .rounding_bottom_left(round_radius)
                     .transform(translate(
-                        brick_chunk_size * 2.0 + brick_space,
+                        brick_chunk_size * 2.0 + epsilon + brick_space,
                         brick_height + brick_space * 1.5,
                     )),
             )
@@ -551,6 +553,7 @@ impl Game {
                     paint: docker_color.into(),
                     width: docker_brush_size,
                     line_join: LineJoin::Round,
+                    line_cap: LineCap::Round,
                     ..Default::default()
                 }),
             )
@@ -598,7 +601,7 @@ fn main() {
             .with_double_buffer(Some(true))
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default(),
+        Render::default(),
     )
     .unwrap();
     app.init().unwrap();
@@ -608,7 +611,7 @@ fn main() {
         .join("examples")
         .join("resources")
         .join("Roboto-Regular.ttf");
-    app.renderer_mut().load_font("Roboto", font_path).unwrap();
+    app.renderer_mut().load_font("Roboto-Regular", font_path).unwrap();
 
     let comp = Comp::new(Game::create(()));
     app.run(comp);

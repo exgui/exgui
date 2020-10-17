@@ -1,0 +1,16 @@
+[package]
+name = "exgui_render_pathfinder"
+version = "0.2.0"
+authors = ["Alexander XX <freecoder.xx@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+exgui_core = { path = "../core" }
+pathfinder_content = "0.5.0"
+pathfinder_canvas = { version = "0.5", features = ["pf-text"] }
+pathfinder_gl = "0.5.0"
+pathfinder_simd = "0.5.0"
+pathfinder_renderer = "0.5.0"
+pathfinder_resources = "0.5.0"
+font-kit = "0.6.0"
+skribo = "0.1.0"
