@@ -145,7 +145,9 @@ impl Render for NanovgRender {
         self.device_pixel_ratio = device_pixel_ratio as f32;
     }
 
-    fn render(&mut self, node: &mut dyn CompositeShape) -> Result<(), Self::Error> {
+    fn render(&mut self, node: &mut dyn CompositeShape) -> Result<bool, Self::Error> {
+        let need_recalc = node.need_recalc().unwrap_or(true);
+        let need_redraw = node.need_redraw().unwrap_or(true);
         let shared_self = &*self;
         shared_self
             .context
@@ -162,15 +164,17 @@ impl Render for NanovgRender {
                         max_y: shared_self.height as Real,
                     };
 
-                    if node.need_recalc().unwrap_or(true) {
+                    if need_recalc {
                         let mut defaults = ShapeDefaults::default();
                         Self::recalc_composite(&frame, node, bound, TransformMatrix::identity(), &mut defaults);
                     }
-                    let mut defaults = ShapeDefaults::default();
-                    Self::render_composite(&frame, node, None, &mut defaults);
+                    if need_redraw {
+                        let mut defaults = ShapeDefaults::default();
+                        Self::render_composite(&frame, node, None, &mut defaults);
+                    }
                 },
             );
-        Ok(())
+        Ok(need_redraw)
     }
 }
 

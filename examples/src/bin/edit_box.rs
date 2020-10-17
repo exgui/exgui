@@ -145,18 +145,18 @@ impl Model for EditBox {
                 }
                 VirtualKeyCode::Delete if self.editable => {
                     self.caret.update_action(CaretAction::Delete);
-                    ChangeView::Modify
+                    ChangeView::RecalcOnly
                 }
                 VirtualKeyCode::Backspace if self.editable => {
                     self.caret.update_action(CaretAction::Backspace);
-                    ChangeView::Modify
+                    ChangeView::RecalcOnly
                 }
                 _ => ChangeView::None,
             },
             Msg::Input(ch) if self.editable => {
                 if !(ch.is_ascii_control() || ch.is_control()) {
                     self.caret.update_action(CaretAction::Input(ch));
-                    ChangeView::Modify
+                    ChangeView::RecalcOnly
                 } else {
                     ChangeView::None
                 }

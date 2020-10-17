@@ -27,6 +27,7 @@ pub trait Model: Sized + 'static {
 pub enum ChangeView {
     Rebuild,
     Modify,
+    RecalcOnly,
     None,
 }
 
@@ -42,6 +43,7 @@ impl ChangeViewState {
         match change_view {
             ChangeView::Rebuild => self.need_rebuild = true,
             ChangeView::Modify => self.need_modify = true,
+            ChangeView::RecalcOnly => self.need_recalc = true,
             ChangeView::None => (),
         }
     }

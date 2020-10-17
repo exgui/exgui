@@ -2,7 +2,7 @@ use std::{borrow::Cow, collections::HashMap, marker::PhantomData};
 
 use crate::{
     CompositeShape, CompositeShapeIter, CompositeShapeIterMut, EventName, InputEvent, Listener, Model, Node, On, Shape,
-    SystemMessage, Transform,
+    SystemMessage, Transform, UpdateView,
 };
 
 pub struct Prim<M: Model> {
@@ -39,7 +39,7 @@ impl<M: Model> Prim<M> {
             Shape::Text(ref mut text) => {
                 text.content = content.into();
                 true
-            },
+            }
             _ => false,
         }
     }
@@ -81,7 +81,7 @@ impl<M: Model> Prim<M> {
                             outputs.push(msg);
                         }
                     }
-                },
+                }
                 InputEvent::MouseScroll(scroll) => {
                     if self.intersect(scroll.pos.x, scroll.pos.y) {
                         if let Some(listeners) = self.listeners.get(&EventName::ON_MOUSE_SCROLL) {
@@ -97,7 +97,7 @@ impl<M: Model> Prim<M> {
                             }
                         }
                     }
-                },
+                }
                 InputEvent::KeyDown(event) => {
                     if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_DOWN) {
                         for listener in listeners {
@@ -108,7 +108,7 @@ impl<M: Model> Prim<M> {
                             outputs.push(msg);
                         }
                     }
-                },
+                }
                 InputEvent::KeyUp(event) => {
                     if let Some(listeners) = self.listeners.get(&EventName::ON_KEY_UP) {
                         for listener in listeners {
@@ -119,7 +119,7 @@ impl<M: Model> Prim<M> {
                             outputs.push(msg);
                         }
                     }
-                },
+                }
                 InputEvent::Char(ch) => {
                     if let Some(listeners) = self.listeners.get(&EventName::ON_INPUT_CHAR) {
                         for listener in listeners {
@@ -130,7 +130,7 @@ impl<M: Model> Prim<M> {
                             outputs.push(msg);
                         }
                     }
-                },
+                }
             },
             SystemMessage::Draw(duration) => {
                 if let Some(listeners) = self.listeners.get(&EventName::DRAW) {
@@ -142,7 +142,7 @@ impl<M: Model> Prim<M> {
                         outputs.push(msg);
                     }
                 }
-            },
+            }
             SystemMessage::WindowResized { width, height } => {
                 if let Some(listeners) = self.listeners.get(&EventName::WINDOW_RESIZED) {
                     for listener in listeners {
@@ -153,7 +153,7 @@ impl<M: Model> Prim<M> {
                         outputs.push(msg);
                     }
                 }
-            },
+            }
         }
 
         for child in self.children.iter_mut() {
@@ -161,12 +161,12 @@ impl<M: Model> Prim<M> {
         }
     }
 
-    pub fn update_view(&mut self) -> bool {
-        let mut is_updated = false;
+    pub fn update_view(&mut self) -> UpdateView {
+        let mut update = UpdateView::None;
         for child in self.children.iter_mut() {
-            is_updated = child.update_view() || is_updated;
+            update = child.update_view().merge(update);
         }
-        is_updated
+        update
     }
 }
 
@@ -190,6 +190,10 @@ impl<M: Model> CompositeShape for Prim<M> {
     }
 
     fn need_recalc(&self) -> Option<bool> {
+        None
+    }
+
+    fn need_redraw(&self) -> Option<bool> {
         None
     }
 }

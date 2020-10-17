@@ -83,7 +83,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            },
+            }
             Node::Comp(comp) if comp.id() == Some(id) => Some(self),
             _ => None,
         }
@@ -100,7 +100,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            },
+            }
             Node::Comp(comp) if comp.id() == Some(id) => Some(self),
             _ => None,
         }
@@ -120,7 +120,7 @@ impl<M: Model> Node<M> {
                     }
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
@@ -139,7 +139,7 @@ impl<M: Model> Node<M> {
                     }
                     None
                 }
-            },
+            }
             _ => None,
         }
     }
@@ -155,7 +155,7 @@ impl<M: Model> Node<M> {
                     }
                 }
                 None
-            },
+            }
             _ => None,
         }
     }
@@ -174,7 +174,7 @@ impl<M: Model> Node<M> {
         }
     }
 
-    pub fn update_view(&mut self) -> bool {
+    pub fn update_view(&mut self) -> UpdateView {
         match self {
             Node::Prim(prim) => prim.update_view(),
             Node::Comp(comp) => comp.update_view(),
@@ -215,6 +215,13 @@ impl<M: Model> CompositeShape for Node<M> {
         match self {
             Node::Prim(prim) => CompositeShape::need_recalc(prim),
             Node::Comp(comp) => CompositeShape::need_recalc(comp),
+        }
+    }
+
+    fn need_redraw(&self) -> Option<bool> {
+        match self {
+            Node::Prim(prim) => CompositeShape::need_redraw(prim),
+            Node::Comp(comp) => CompositeShape::need_redraw(comp),
         }
     }
 }

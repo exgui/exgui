@@ -34,8 +34,44 @@ pub trait CompApi: AsAny {
     fn as_composite_shape(&self) -> Option<&dyn CompositeShape>;
     fn as_composite_shape_mut(&mut self) -> Option<&mut dyn CompositeShape>;
     fn send_system_msg(&mut self, msg: SystemMessage);
-    fn update_view(&mut self) -> bool;
+    fn update_view(&mut self) -> UpdateView;
     fn need_recalc(&self) -> bool;
+    fn need_redraw(&self) -> bool;
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UpdateView {
+    Recalc,
+    RecalcAndRedraw,
+    None,
+}
+
+impl UpdateView {
+    pub fn is_none(&self) -> bool {
+        matches!(self, Self::None)
+    }
+
+    pub fn is_recalc(&self) -> bool {
+        matches!(self, Self::Recalc | Self::RecalcAndRedraw)
+    }
+
+    pub fn is_redraw(&self) -> bool {
+        matches!(self, Self::RecalcAndRedraw)
+    }
+
+    pub fn merge(&self, other: Self) -> Self {
+        match self {
+            UpdateView::Recalc => {
+                if matches!(other, UpdateView::RecalcAndRedraw) {
+                    UpdateView::RecalcAndRedraw
+                } else {
+                    UpdateView::Recalc
+                }
+            }
+            UpdateView::RecalcAndRedraw => UpdateView::RecalcAndRedraw,
+            UpdateView::None => other,
+        }
+    }
 }
 
 pub struct Comp {
@@ -104,7 +140,7 @@ impl Comp {
         self.inner.send_system_msg(msg);
     }
 
-    pub fn update_view(&mut self) -> bool {
+    pub fn update_view(&mut self) -> UpdateView {
         self.inner.update_view()
     }
 }
@@ -129,6 +165,10 @@ impl CompositeShape for Comp {
     fn need_recalc(&self) -> Option<bool> {
         Some(self.inner.need_recalc())
     }
+
+    fn need_redraw(&self) -> Option<bool> {
+        Some(self.inner.need_redraw())
+    }
 }
 
 pub struct CompInner<M: Model> {
@@ -137,6 +177,7 @@ pub struct CompInner<M: Model> {
     model: M,
     view: Option<Node<M>>,
     view_state: ChangeViewState,
+    view_update: UpdateView,
     transform: Transform,
 }
 
@@ -153,6 +194,7 @@ impl<M: Model> CompInner<M> {
                 need_rebuild: true,
                 ..Default::default()
             },
+            view_update: UpdateView::RecalcAndRedraw,
             transform: Default::default(),
         }
     }
@@ -202,35 +244,46 @@ impl<M: Model> CompApi for CompInner<M> {
         }
     }
 
-    fn update_view(&mut self) -> bool {
+    fn update_view(&mut self) -> UpdateView {
         let mut need_to_propagate_update = true;
-        let mut is_updated = false;
+        let mut update = UpdateView::None;
+
         if self.view_state.need_rebuild {
             let view = self.model.build_view();
             self.view = Some(view);
             self.view_state.need_rebuild = false;
             need_to_propagate_update = false;
-            is_updated = true;
+            update = UpdateView::RecalcAndRedraw;
         }
 
-        if self.view_state.need_modify {
+        if self.view_state.need_modify || self.view_state.need_recalc {
             let mut view = self.view.take().unwrap();
             self.model.modify_view(&mut view);
             self.view = Some(view);
-            self.view_state.need_modify = false;
-            is_updated = true;
+            if self.view_state.need_recalc {
+                self.view_state.need_recalc = false;
+                update = UpdateView::Recalc;
+            }
+            if self.view_state.need_modify {
+                self.view_state.need_modify = false;
+                update = UpdateView::RecalcAndRedraw;
+            }
         }
 
         if need_to_propagate_update {
             if let Some(view) = self.view.as_mut() {
-                is_updated = view.update_view() || is_updated;
+                update = view.update_view().merge(update);
             }
         }
-        self.view_state.need_recalc = is_updated;
-        is_updated
+        self.view_update = update;
+        update
     }
 
     fn need_recalc(&self) -> bool {
-        self.view_state.need_recalc
+        self.view_update.is_recalc()
+    }
+
+    fn need_redraw(&self) -> bool {
+        self.view_update.is_redraw()
     }
 }

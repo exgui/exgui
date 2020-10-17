@@ -286,6 +286,8 @@ pub trait CompositeShape {
 
     fn need_recalc(&self) -> Option<bool>;
 
+    fn need_redraw(&self) -> Option<bool>;
+
     fn intersect(&self, x: Real, y: Real) -> bool {
         if let Some(shape) = self.shape() {
             match shape {

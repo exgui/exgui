@@ -134,7 +134,7 @@ impl Render for PathfinderRender {
         }
     }
 
-    fn render(&mut self, node: &mut dyn CompositeShape) -> Result<(), Self::Error> {
+    fn render(&mut self, node: &mut dyn CompositeShape) -> Result<bool, Self::Error> {
         let renderer_context = self.context.as_mut().ok_or(PathfinderRenderError::ContextIsNotInit)?;
         let mut canvas_context =
             Canvas::new(self.framebuffer_size.to_f32()).get_context_2d(renderer_context.font_context.clone());
@@ -157,14 +157,18 @@ impl Render for PathfinderRender {
                 &mut defaults,
             );
         }
-        let mut defaults = ShapeDefaults::default();
-        Self::render_composite(&mut canvas_context, node, None, &mut defaults);
 
-        // Render the canvas to screen.
-        let scene = SceneProxy::from_scene(canvas_context.into_canvas().into_scene(), RayonExecutor);
-        scene.build_and_render(&mut renderer_context.renderer, BuildOptions::default());
+        if node.need_redraw().unwrap_or(true) {
+            let mut defaults = ShapeDefaults::default();
+            Self::render_composite(&mut canvas_context, node, None, &mut defaults);
 
-        Ok(())
+            // Render the canvas to screen.
+            let scene = SceneProxy::from_scene(canvas_context.into_canvas().into_scene(), RayonExecutor);
+            scene.build_and_render(&mut renderer_context.renderer, BuildOptions::default());
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 
