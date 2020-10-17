@@ -211,7 +211,7 @@ impl Model for EditBox {
                                 .fill(Color::Black)
                                 .id("text")
                                 .font_name("Roboto-Regular")
-                                .font_size(28),
+                                .font_size(25),
                         ),
                     ),
             )
