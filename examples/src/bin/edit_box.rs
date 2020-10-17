@@ -1,11 +1,12 @@
 use std::{env, mem, time::Duration};
 
 use exgui::{
-    builder::*, ChangeView, Color, Comp, Model, MousePos, Node, PathCommand::*, Real, Shaped, SystemMessage,
+    builder::*, ChangeView, Color, Comp, Model, MousePos, Node, PathCommand::*, Real, Shaped, SystemMessage, Text,
     VirtualKeyCode,
 };
 use exgui_controller_glutin::{glutin, App};
-use exgui_render_nanovg::NanovgRender;
+// use exgui_render_nanovg::NanovgRender as Render;
+use exgui_render_pathfinder::PathfinderRender as Render;
 
 enum CaretAction {
     Put(Real),
@@ -205,23 +206,22 @@ impl Model for EditBox {
                     })
                     .on_input_char(|case| Msg::Input(case.event))
                     .child(
-                        group()
-                            .id("clip_area")
-                            .clip(-1, 0, 400 - 16, 40 - 8)
-                            .child(text(&self.initial_text).id("text").font_name("Roboto").font_size(32)),
+                        group().id("clip_area").clip(-1, 0, 400 - 16, 40 - 8).child(
+                            text(&self.initial_text)
+                                .fill(Color::Black)
+                                .id("text")
+                                .font_name("Roboto-Regular")
+                                .font_size(28),
+                        ),
                     ),
             )
             .build()
     }
 
     fn modify_view(&mut self, view: &mut Node<Self>) {
-        let text = view
-            .get_prim_mut("text")
-            .and_then(|text| text.shape.text_mut())
-            .expect("Text primitive expected");
-
         match self.caret.action.take() {
             CaretAction::Put(mut focus_pos) => {
+                let text = Self::get_text_mut(view);
                 let matrix = text
                     .transform
                     .global_matrix()
@@ -256,6 +256,7 @@ impl Model for EditBox {
                 self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::MoveRight => {
+                let text = Self::get_text_mut(view);
                 self.caret.idx = self.caret.idx
                     + if text.glyph_positions.len() > self.caret.idx {
                         1
@@ -269,10 +270,12 @@ impl Model for EditBox {
                 self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::MoveEnd => {
+                let text = Self::get_text_mut(view);
                 self.caret.idx = text.glyph_positions.len();
                 self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::Input(ch) => {
+                let text = Self::get_text_mut(view);
                 if self.caret.idx < text.glyph_positions.len() {
                     text.insert(self.caret.idx, ch);
                 } else {
@@ -282,12 +285,14 @@ impl Model for EditBox {
                 self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::Delete => {
+                let text = Self::get_text_mut(view);
                 if self.caret.idx < text.glyph_positions.len() {
                     text.remove(self.caret.idx);
                     self.caret.update_action(CaretAction::Redraw);
                 }
             }
             CaretAction::Backspace => {
+                let text = Self::get_text_mut(view);
                 if self.caret.idx > 0 {
                     self.caret.idx -= 1;
                     text.remove(self.caret.idx);
@@ -295,6 +300,7 @@ impl Model for EditBox {
                 }
             }
             CaretAction::Redraw => {
+                let text = Self::get_text_mut(view);
                 let caret_pos = if self.caret.idx > 0 {
                     text.glyph_positions[self.caret.idx - 1].max_x()
                 } else {
@@ -315,6 +321,12 @@ impl Model for EditBox {
 }
 
 impl EditBox {
+    fn get_text_mut(view: &mut Node<Self>) -> &mut Text {
+        view.get_prim_mut("text")
+            .and_then(|text| text.shape.text_mut())
+            .expect("Text primitive expected")
+    }
+
     fn draw_caret(view: &mut Node<Self>, caret_pos: Real, text_end_pos: Real, line_height: Real, show: bool) {
         if let Some(path) = view.get_prim_mut("caret").and_then(|caret| caret.shape.path_mut()) {
             path.cmd[0] = Move([caret_pos, 0.0]);
@@ -365,7 +377,7 @@ fn main() {
             .with_vsync(true)
             .with_multisampling(8)
             .with_srgb(true),
-        NanovgRender::default(),
+        Render::default(),
     )
     .unwrap();
     app.init().unwrap();
@@ -375,7 +387,7 @@ fn main() {
         .join("examples")
         .join("resources")
         .join("Roboto-Regular.ttf");
-    app.renderer_mut().load_font("Roboto", font_path).unwrap();
+    app.renderer_mut().load_font("Roboto-Regular", font_path).unwrap();
 
     let comp = Comp::new(EditBox::create(()));
     app.run(comp);
