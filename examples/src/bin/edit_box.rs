@@ -288,16 +288,16 @@ impl Model for EditBox {
                 let text = Self::get_text_mut(view);
                 if self.caret.idx < text.glyph_positions.len() {
                     text.remove(self.caret.idx);
-                    self.caret.update_action(CaretAction::Redraw);
                 }
+                self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::Backspace => {
                 let text = Self::get_text_mut(view);
                 if self.caret.idx > 0 {
                     self.caret.idx -= 1;
                     text.remove(self.caret.idx);
-                    self.caret.update_action(CaretAction::Redraw);
                 }
+                self.caret.update_action(CaretAction::Redraw);
             }
             CaretAction::Redraw => {
                 let text = Self::get_text_mut(view);

@@ -280,7 +280,8 @@ impl PathfinderRender {
                     canvas.save();
                     Self::set_text_options(canvas, text, defaults);
 
-                    let metrics = canvas.measure_text(&text.content);
+                    let content = if text.content.is_empty() { "a" } else { &text.content };
+                    let metrics = canvas.measure_text(content);
                     let ascend = metrics.font_bounding_box_ascent.abs();
                     let descend = metrics.font_bounding_box_descent.abs();
                     let line_height = ascend + descend;
