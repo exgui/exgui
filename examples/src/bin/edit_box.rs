@@ -101,7 +101,7 @@ impl Model for EditBox {
 
     fn create(_props: Self::Properties) -> Self {
         EditBox {
-            initial_text: "Cos or sin".to_string(),
+            initial_text: "Some text in the edit box".to_string(),
             editable: true,
             focus: false,
             caret: Caret::new(),

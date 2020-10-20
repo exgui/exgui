@@ -291,7 +291,7 @@ impl PathfinderRender {
                         line_height,
                     });
 
-                    // todo: caching glyph_positions
+                    // todo: cache the glyph_positions
                     let layout = skribo::layout(
                         &TextStyle {
                             size: canvas.font_size(),
